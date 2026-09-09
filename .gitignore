@@ -1,2 +1,10 @@
 .pixi/
 data/
+# pixi environments
+.pixi/*
+!.pixi/config.toml
+.pixi/
+data/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
