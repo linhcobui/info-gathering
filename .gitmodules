@@ -1,0 +1,3 @@
+[submodule "submodules/object_sim"]
+	path = submodules/object_sim
+	url = https://github.com/vikashplus/object_sim.git
