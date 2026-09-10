@@ -5,7 +5,7 @@ cups-and-ball *shell game*. The environment reveals a ball's location, hides it 
 shuffles the cups through a series of swaps, and lifts a cup to reveal what's underneath.
 A model trained on this data must **track a hidden object through occlusion and motion** —
 a direct probe of memory in a learned world model.
-
+![Screenshot](assets/Screenshot%202026-09-10%20154029.png)
 ---
 
 ## Motivation
