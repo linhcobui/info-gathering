@@ -1,0 +1,45 @@
+[project]
+name = "info-gathering"
+version = "0.1.0"
+description = "Offline dataset generation for cups-and-ball world model"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+tmux = "*"
+python = "3.11.*"
+pip = "*"
+
+# core numerics
+numpy = "*"
+scipy = "*"
+
+# dataset I/O
+h5py = "*"
+zarr = "<3"
+
+# video / image
+imageio = "*"
+imageio-ffmpeg = "*"
+pillow = "*"
+
+# utilities
+tqdm = "*"
+matplotlib = "*"
+pyyaml = "*"
+
+# notebooks (optional but handy for inspecting frames)
+jupyterlab = "*"
+ipykernel = "*"
+
+# EGL for headless GPU rendering
+libglvnd = "*"
+
+[pypi-dependencies]
+mujoco = ">=3.2"
+mediapy = "*"
+
+[tasks]
+# convenience shortcuts — run with `pixi run <name>`
+test-render = "python scripts/test_render.py"
+generate = "python scripts/generate_data.py"

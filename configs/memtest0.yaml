@@ -1,0 +1,56 @@
+seed: 0
+
+# episode structure
+blocks_per_episode: 2        # x: [swaps_per_block swaps, then 1 lift] repeated
+swaps_per_block: 5
+
+# phase durations (frames)
+reveal_frames: 15
+cover_frames: 10
+swap_frames: 20
+lift_up_frames: 10
+lift_pause_frames: 10
+lift_down_frames: 10
+pause_frames: 10             # between every transition
+
+# geometry (meters)
+cup_spacing: 0.12
+cup_rest_z: 0.05             # body z so flipped rim rests on floor
+cup_up_z: 0.17              # raised (revealed) body z
+arc_height_front: 0.06       # rightward-moving cup arcs +y (toward camera)
+arc_height_back: 0.06        # leftward-moving cup arcs -y (away)
+ball_radius: 0.03
+ball_z: 0.015
+
+# lift target (fixed for now): always lift slot 2 -> action [0,0,1]
+lift_slot: 2
+
+# ball start slot: null = random, or 0/1/2 to fix
+ball_start_slot: null
+
+# cup appearance
+cup_color_mode: same
+cup_colors_distinct:
+  - [1.00, 0.75, 0.80, 1.0]
+  - [0.75, 1.00, 0.80, 1.0]
+  - [0.75, 0.80, 1.00, 1.0]
+ball_rgba: [0.95, 0.60, 0.10, 1.0]
+
+# rendering
+resolution: 224
+fps: 20
+camera: head_on
+
+# physics
+sim_substeps: 5              # mj_steps per recorded frame (ball settling)
+
+# output
+video_path: data/preview.mp4
+camera_pos: [0, -0.45, 0.35]
+camera_xyaxes: [1, 0, 0, 0, 0.65, 0.94]
+cup_color_same: [0.75, 0.12, 0.12, 1.0]
+
+# dataset size
+n_episodes: 1000
+zarr_path: data/memtest0.zarr
+video_dir: data/videos

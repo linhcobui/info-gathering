@@ -1,0 +1,91 @@
+<mujoco model="shell_game">
+  <compiler angle="radian" meshdir="../../submodules/object_sim"/>
+
+  <option timestep="0.002" gravity="0 0 -9.81"/>
+
+  <default>
+    <default class="grab">
+      <joint limited="false" margin="0.01" armature="0.001" damping="0" frictionloss="0.001"/>
+      <geom type="mesh" rgba=".93 .99 .97 1.0"/>
+      <site size="0.005 0 0" rgba="0.4 0.9 0.4 1"/>
+      <default class="object_col">
+        <geom type="mesh" density="1250" contype="1" conaffinity="1"
+              friction="1 0.5 0.01" margin="0.0005" condim="4"
+              rgba=".3 .4 .5 1" group="3"/>
+      </default>
+    </default>
+  </default>
+
+  <visual>
+    <global offheight="224" offwidth="224"/>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.4 0.4 0.4" specular="0.1 0.1 0.1"/>
+    <quality shadowsize="2048" offsamples="8"/>
+  </visual>
+
+  <include file="../../submodules/object_sim/cup/assets.xml"/>
+
+  <asset>
+    <texture name="grid" type="2d" builtin="checker" width="512" height="512"
+             rgb1="0.25 0.28 0.32" rgb2="0.30 0.34 0.40"/>
+    <material name="floor_mat" texture="grid" texrepeat="6 6" reflectance="0.1"/>
+  </asset>
+
+  <worldbody>
+    <light directional="true" dir="0 0.3 -1" pos="0 -0.3 1.0"
+           diffuse="0.8 0.8 0.8" specular="0.2 0.2 0.2"/>
+
+    <geom name="floor" type="plane" size="2 2 0.1" pos="0 0 0" material="floor_mat"/>
+
+    <camera name="head_on" pos="0 -0.55 0.22" xyaxes="1 0 0 0 0.4 0.9"/>
+
+    <include file="../objects/ball.xml"/>
+
+    <body name="cup0" mocap="true" pos="-0.12 0 0.05" euler="3.14159 0 0" childclass="grab">
+      <geom name="cup0_visual" mesh="cup" rgba="1 0.75 0.8 1.0"/>
+      <geom name="cup0_c0" mesh="contact0" class="object_col"/>
+      <geom name="cup0_c1" mesh="contact1" class="object_col"/>
+      <geom name="cup0_c2" mesh="contact2" class="object_col"/>
+      <geom name="cup0_c3" mesh="contact3" class="object_col"/>
+      <geom name="cup0_c4" mesh="contact4" class="object_col"/>
+      <geom name="cup0_c5" mesh="contact5" class="object_col"/>
+      <geom name="cup0_c6" mesh="contact6" class="object_col"/>
+      <geom name="cup0_c7" mesh="contact7" class="object_col"/>
+      <geom name="cup0_c8" mesh="contact8" class="object_col"/>
+      <geom name="cup0_c9" mesh="contact9" class="object_col"/>
+      <geom name="cup0_c10" mesh="contact10" class="object_col"/>
+      <geom name="cup0_c11" mesh="contact11" class="object_col"/>
+    </body>
+
+    <body name="cup1" mocap="true" pos="0 0 0.05" euler="3.14159 0 0" childclass="grab">
+      <geom name="cup1_visual" mesh="cup" rgba="0.75 1 0.8 1.0"/>
+      <geom name="cup1_c0" mesh="contact0" class="object_col"/>
+      <geom name="cup1_c1" mesh="contact1" class="object_col"/>
+      <geom name="cup1_c2" mesh="contact2" class="object_col"/>
+      <geom name="cup1_c3" mesh="contact3" class="object_col"/>
+      <geom name="cup1_c4" mesh="contact4" class="object_col"/>
+      <geom name="cup1_c5" mesh="contact5" class="object_col"/>
+      <geom name="cup1_c6" mesh="contact6" class="object_col"/>
+      <geom name="cup1_c7" mesh="contact7" class="object_col"/>
+      <geom name="cup1_c8" mesh="contact8" class="object_col"/>
+      <geom name="cup1_c9" mesh="contact9" class="object_col"/>
+      <geom name="cup1_c10" mesh="contact10" class="object_col"/>
+      <geom name="cup1_c11" mesh="contact11" class="object_col"/>
+    </body>
+
+    <body name="cup2" mocap="true" pos="0.12 0 0.05" euler="3.14159 0 0" childclass="grab">
+      <geom name="cup2_visual" mesh="cup" rgba="0.75 0.8 1 1.0"/>
+      <geom name="cup2_c0" mesh="contact0" class="object_col"/>
+      <geom name="cup2_c1" mesh="contact1" class="object_col"/>
+      <geom name="cup2_c2" mesh="contact2" class="object_col"/>
+      <geom name="cup2_c3" mesh="contact3" class="object_col"/>
+      <geom name="cup2_c4" mesh="contact4" class="object_col"/>
+      <geom name="cup2_c5" mesh="contact5" class="object_col"/>
+      <geom name="cup2_c6" mesh="contact6" class="object_col"/>
+      <geom name="cup2_c7" mesh="contact7" class="object_col"/>
+      <geom name="cup2_c8" mesh="contact8" class="object_col"/>
+      <geom name="cup2_c9" mesh="contact9" class="object_col"/>
+      <geom name="cup2_c10" mesh="contact10" class="object_col"/>
+      <geom name="cup2_c11" mesh="contact11" class="object_col"/>
+    </body>
+  </worldbody>
+</mujoco>
