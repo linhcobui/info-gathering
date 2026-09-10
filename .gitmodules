@@ -1,3 +1,6 @@
 [submodule "submodules/object_sim"]
 	path = submodules/object_sim
 	url = https://github.com/vikashplus/object_sim.git
+[submodule "third_party/r2dreamer"]
+	path = third_party/r2dreamer
+	url = https://github.com/NM512/r2dreamer.git
