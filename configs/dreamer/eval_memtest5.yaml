@@ -1,0 +1,33 @@
+# memtest5 eval: watch through the hold (0-4 swaps of the only pair), then imagine the lift.
+# Two cups means every swap flips the ball, so positives are exactly half the set: chance is
+# F1 0.5 and "always ball" scores F1 0.667. Only the lift segment is meaningful -- the first
+# action onset is the cover, where there is no ball question.
+#   pixi run eval-memtest1 --config-name eval_memtest5 decoder_run=<decoder run>
+hydra:
+  run:
+    dir: ${outdir}
+  job:
+    chdir: false
+
+decoder_run: ???                    # a train_decoder.py run directory
+decoder_checkpoint: ${decoder_run}/checkpoints/decoder_latest.pt   # also names the world-model checkpoint
+zarr_path: data/memtest5_eval.zarr  # slack sweep x 5 swap counts x 2 start slots
+outdir: ${decoder_run}/eval_memtest5/${now:%Y-%m-%d_%H-%M-%S}
+device: cuda:0
+seed: 0
+
+horizon: 9                          # imagined steps after an action onset (the lift is 10 steps incl. the onset)
+label_key: ball_under_target        # read at the onset step, after all swaps have happened
+meta_keys: [ball_under_target, ball_slot, phase]
+
+detector:
+  threshold: 0.15                   # a pixel is yellow if min(R, G) - B is above this
+  min_pixels: 3                     # a frame shows the ball if it has at least this many yellow pixels
+
+sheet_max_rows: 60                  # evenly spaced subset when the eval set has more episodes
+
+videos:
+  holds: [10, 22, 34]               # one mp4 per listed hold, per combination present at it
+  fps: 4                            # slowed from the recorded 20 fps so the lift is easy to follow
+
+hold_offset: 20                     # memtest5 has no closed phase: reveal 10 + show 10 outside the hold

@@ -1,0 +1,16 @@
+# memtest4: stage 1 on the three-cup dataset with 0-4 random-pair swaps (60-step padded episodes).
+#   pixi run train-wm --config-name train_memtest4 [overrides]
+defaults:
+  - train
+  - override data: memtest4
+  - _self_
+
+logdir: logdir/world_model/${model.name}_memtest4/${now:%Y-%m-%d_%H-%M-%S}_memtest4
+
+trainer:
+  steps: 15000              # 1000 epochs: 250 episodes / batch 16 = 15 updates per epoch
+  eval_every: 1e9           # no holdout split, so no holdout eval and no wm_best.pt
+
+wandb:
+  group: ${model.name}_memtest4
+  tags: [memtest4]

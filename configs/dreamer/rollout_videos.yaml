@@ -1,0 +1,18 @@
+# Rollout videos: ground truth, and ground truth that switches to imagination at each action onset.
+#   pixi run rollout-videos decoder_run=logdir/world_model/r2dreamer/<wm run>/decoder/<timestamp>
+hydra:
+  run:
+    dir: ${outdir}
+  job:
+    chdir: false
+
+decoder_run: ???                    # a train_decoder.py run directory
+decoder_checkpoint: ${decoder_run}/checkpoints/decoder_latest.pt
+outdir: ${decoder_run}/rollout_videos/${now:%Y-%m-%d_%H-%M-%S}
+device: cuda:0
+seed: 0
+
+episodes:
+  start: 950                        # holdout episodes start at 950
+  count: 10
+scale: 3                            # pixel upscaling of the 64px frames in the per-episode videos

@@ -16,7 +16,7 @@ from tqdm import tqdm
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--config", default=os.path.join(ROOT, "configs", "memtest0.yaml"))
+    ap.add_argument("--config", default=os.path.join(ROOT, "configs", "data", "memtest0.yaml"))
     ap.add_argument("--n", type=int, default=None, help="override n_episodes")
     ap.add_argument("--preview-every", type=int, default=20,
                     help="dump an MP4 every K episodes (0 = none)")

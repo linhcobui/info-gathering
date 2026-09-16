@@ -1,0 +1,29 @@
+# memtest2 eval: watch the real frames through the hold (including the swap, if any), then
+# imagine the lift and look for the ball under the lifted cup.
+#   pixi run eval-memtest1 --config-name eval_memtest2 decoder_run=<decoder run>
+hydra:
+  run:
+    dir: ${outdir}
+  job:
+    chdir: false
+
+decoder_run: ???                    # a train_decoder.py run directory
+decoder_checkpoint: ${decoder_run}/checkpoints/decoder_latest.pt   # also names the world-model checkpoint
+zarr_path: data/memtest2_eval.zarr  # 4 episodes per hold length 10-40
+outdir: ${decoder_run}/eval_memtest2/${now:%Y-%m-%d_%H-%M-%S}
+device: cuda:0
+seed: 0
+
+horizon: 9                          # imagined steps after an action onset (the lift is 10 steps incl. the onset)
+label_key: ball_under_target        # read at the onset step, after any swap has happened
+meta_keys: [ball_under_target, ball_slot, phase]
+
+detector:
+  threshold: 0.15                   # a pixel is yellow if min(R, G) - B is above this
+  min_pixels: 3                     # a frame shows the ball if it has at least this many yellow pixels
+
+sheet_max_rows: 60                  # evenly spaced subset when the eval set has more episodes
+
+videos:
+  holds: [10, 20, 30, 40]           # one mp4 per listed hold (first matching episode)
+  fps: 4                            # slowed from the recorded 20 fps so the lift is easy to follow

@@ -67,7 +67,8 @@ Key mechanics:
 info-gathering/
 ├── pixi.toml / pixi.lock        environment (mujoco, zarr<3, imageio, tqdm, …)
 ├── configs/
-│   └── memtest0.yaml            ALL hyperparameters: timing, geometry, colors, camera, seed, output paths
+│   └── data/
+│       └── memtest0.yaml        ALL hyperparameters: timing, geometry, colors, camera, seed, output paths
 ├── submodules/
 │   └── object_sim/              git submodule (vikashplus/object_sim) — the cup mesh + collision decomposition
 ├── src/info_gathering/          importable library
@@ -85,7 +86,7 @@ info-gathering/
 
 **Design principle:** `src/` is the library (imported, testable, reused); `scripts/` are thin
 runnable entry points that wire library calls to I/O. All tunable numbers live in
-`configs/memtest0.yaml` — no magic constants in code.
+`configs/data/memtest0.yaml` — no magic constants in code.
 
 ---
 
@@ -123,7 +124,7 @@ python scripts/test_render.py
 ### Preview one episode as a video
 ```bash
 python scripts/preview_episode.py
-# → data/preview.mp4   (fixed seed; edit configs/memtest0.yaml to retune camera/colors)
+# → data/preview.mp4   (fixed seed; edit configs/data/memtest0.yaml to retune camera/colors)
 ```
 
 ### Inspect an episode's ground truth
@@ -185,7 +186,7 @@ dataset self-describing.
 
 ---
 
-## Configuration reference (`configs/memtest0.yaml`)
+## Configuration reference (`configs/data/memtest0.yaml`)
 
 | Group | Keys | Meaning |
 |---|---|---|

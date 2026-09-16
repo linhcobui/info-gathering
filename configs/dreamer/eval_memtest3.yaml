@@ -1,0 +1,28 @@
+# memtest3 eval: watch through the hold (0, 1 or 2 swaps), then imagine the lift.
+#   pixi run eval-memtest1 --config-name eval_memtest3 decoder_run=<decoder run>
+hydra:
+  run:
+    dir: ${outdir}
+  job:
+    chdir: false
+
+decoder_run: ???                    # a train_decoder.py run directory
+decoder_checkpoint: ${decoder_run}/checkpoints/decoder_latest.pt   # also names the world-model checkpoint
+zarr_path: data/memtest3_eval.zarr  # slack sweep x {0, 1, 2} swaps x both ball sides
+outdir: ${decoder_run}/eval_memtest3/${now:%Y-%m-%d_%H-%M-%S}
+device: cuda:0
+seed: 0
+
+horizon: 9                          # imagined steps after an action onset (the lift is 10 steps incl. the onset)
+label_key: ball_under_target        # read at the onset step, after any swaps have happened
+meta_keys: [ball_under_target, ball_slot, phase]
+
+detector:
+  threshold: 0.15                   # a pixel is yellow if min(R, G) - B is above this
+  min_pixels: 3                     # a frame shows the ball if it has at least this many yellow pixels
+
+sheet_max_rows: 60                  # evenly spaced subset when the eval set has more episodes
+
+videos:
+  holds: [10, 16, 22, 28]           # one mp4 per listed hold, per combination present at it
+  fps: 4                            # slowed from the recorded 20 fps so the lift is easy to follow

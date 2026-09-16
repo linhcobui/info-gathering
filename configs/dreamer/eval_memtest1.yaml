@@ -1,0 +1,26 @@
+# memtest1 eval: watch the real frames through the hold, then imagine the lift and look for the ball.
+#   pixi run eval-memtest1 decoder_run=logdir/world_model/r2dreamer_memtest1/<wm run>/decoder/<timestamp>
+hydra:
+  run:
+    dir: ${outdir}
+  job:
+    chdir: false
+
+decoder_run: ???                    # a train_decoder.py run directory
+decoder_checkpoint: ${decoder_run}/checkpoints/decoder_latest.pt   # also names the world-model checkpoint
+zarr_path: data/memtest1_eval.zarr  # separate eval set: 2 episodes per hold length 5-25
+outdir: ${decoder_run}/eval_memtest1/${now:%Y-%m-%d_%H-%M-%S}
+device: cuda:0
+seed: 0
+
+horizon: 9                          # imagined steps after an action onset (the lift phase is 10 steps incl. the onset)
+
+detector:
+  threshold: 0.15                   # a pixel is yellow if min(R, G) - B is above this
+  min_pixels: 3                     # a frame shows the ball if it has at least this many yellow pixels
+
+sheet_max_rows: 60                  # evenly spaced subset when the eval set has more episodes
+
+videos:
+  holds: [5, 15, 25, 35, 45]        # one mp4 per listed hold, for its ball and empty episode
+  fps: 4                            # slowed from the recorded 20 fps so the lift is easy to follow

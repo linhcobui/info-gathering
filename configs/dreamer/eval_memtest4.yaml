@@ -1,0 +1,33 @@
+# memtest4 eval: watch through the hold (0-4 random-pair swaps), then imagine the lift.
+# Note the positive rate is 1/3, not 1/2: "always empty" scores 0.667 accuracy and F1 0, and
+# guessing at the base rate scores about F1 0.33. Only the lift segment is meaningful -- the
+# first action onset is the cover, where there is no ball question.
+#   pixi run eval-memtest1 --config-name eval_memtest4 decoder_run=<decoder run>
+hydra:
+  run:
+    dir: ${outdir}
+  job:
+    chdir: false
+
+decoder_run: ???                    # a train_decoder.py run directory
+decoder_checkpoint: ${decoder_run}/checkpoints/decoder_latest.pt   # also names the world-model checkpoint
+zarr_path: data/memtest4_eval.zarr  # slack sweep x 5 swap counts x 3 start slots
+outdir: ${decoder_run}/eval_memtest4/${now:%Y-%m-%d_%H-%M-%S}
+device: cuda:0
+seed: 0
+
+horizon: 9                          # imagined steps after an action onset (the lift is 10 steps incl. the onset)
+label_key: ball_under_target        # read at the onset step, after all swaps have happened
+meta_keys: [ball_under_target, ball_slot, phase]
+
+detector:
+  threshold: 0.15                   # a pixel is yellow if min(R, G) - B is above this
+  min_pixels: 3                     # a frame shows the ball if it has at least this many yellow pixels
+
+sheet_max_rows: 60                  # evenly spaced subset when the eval set has more episodes
+
+videos:
+  holds: [10, 22, 34]               # one mp4 per listed hold, per combination present at it
+  fps: 4                            # slowed from the recorded 20 fps so the lift is easy to follow
+
+hold_offset: 20                     # memtest4 has no closed phase: reveal 10 + show 10 outside the hold

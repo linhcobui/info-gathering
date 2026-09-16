@@ -1,0 +1,11 @@
+# R2-Dreamer (submodules/r2dreamer), offline and world-model-only: dyn/rep KL + Barlow.
+# No decoder in the loss; decoders are fit afterwards on frozen latents (train_decoder.py).
+_target_: world_model.models.r2dreamer.R2DreamerWM
+name: r2dreamer
+image_size: 64
+window: null                        # whole 81-step episodes: every window starts at is_first
+native:
+  size: size12M                     # submodules/r2dreamer/configs/model/<size>.yaml over _base_.yaml
+  overrides:
+    rep_loss: r2dreamer
+    compile: true

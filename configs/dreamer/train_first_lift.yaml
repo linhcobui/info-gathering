@@ -1,0 +1,12 @@
+# Ablation: stage 1 on episodes cut right after the first lift (43 steps instead of 81).
+#   pixi run train-wm --config-name train_first_lift [overrides]
+defaults:
+  - train
+  - override data: cups_memtest0_first_lift
+  - _self_
+
+logdir: logdir/world_model/${model.name}_first_lift/${now:%Y-%m-%d_%H-%M-%S}_first_lift
+
+wandb:
+  group: ${model.name}_first_lift   # decoder runs on this world model join the same group
+  tags: [ablation, first_lift]

@@ -12,7 +12,7 @@ from info_gathering.scene_builder import build_scene_xml
 from info_gathering.choreography import generate_plan, choreograph
 
 def main():
-    cfg_path = os.path.join(ROOT, "configs", "memtest0.yaml")
+    cfg_path = os.path.join(ROOT, "configs", "data", "memtest0.yaml")
     with open(cfg_path) as f:
         cfg = yaml.safe_load(f)
 

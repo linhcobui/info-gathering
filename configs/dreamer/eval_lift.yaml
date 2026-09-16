@@ -1,0 +1,23 @@
+# Eval: watch the real frames until each lift starts, imagine the lift, check the imagination for the ball.
+#   pixi run eval-lift decoder_run=logdir/world_model/r2dreamer/<wm run>/decoder/<timestamp>
+hydra:
+  run:
+    dir: ${outdir}
+  job:
+    chdir: false
+
+decoder_run: ???                    # a train_decoder.py run directory
+decoder_checkpoint: ${decoder_run}/checkpoints/decoder_latest.pt   # also names the world-model checkpoint
+outdir: ${decoder_run}/eval/lift_${now:%Y-%m-%d_%H-%M-%S}
+device: cuda:0
+seed: 0
+
+episodes:                           # evaluated episodes: [start, stop)
+  start: 950
+  stop: 1000
+batch_size: 16
+horizon: 6                          # imagined steps after each action onset; a lift lasts 6 steps
+
+detector:
+  threshold: 0.15                   # a pixel is yellow if min(R, G) - B is above this
+  min_pixels: 3                     # a frame shows the ball if it has at least this many yellow pixels

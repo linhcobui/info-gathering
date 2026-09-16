@@ -1,0 +1,37 @@
+# Stage 1: train a world model on the offline cups-and-ball data.
+#   pixi run train-wm [overrides]
+defaults:
+  - data: cups_memtest0
+  - model: r2dreamer
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/${model.name}/${now:%Y-%m-%d_%H-%M-%S}
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 16
+  num_workers: 4
+
+trainer:
+  steps: 50000
+  log_every: 250
+  eval_every: 2500          # world-model losses on the holdout episodes
+  best_metric: opt/loss     # lowest holdout value is saved to checkpoints/wm_best.pt
+  ckpt_every: 5000          # overwrite checkpoints/wm_latest.pt (also written at the end)
+  resume: null              # null | auto (latest in ${logdir}/checkpoints) | path to a .pt
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: ${model.name}
+  mode: online              # online | offline | disabled
+  tags: []
+
+tensorboard: true

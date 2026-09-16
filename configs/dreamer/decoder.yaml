@@ -1,0 +1,39 @@
+# Stage 2: fit a pixel decoder on a frozen stage-1 world model and log open-loop rollouts.
+#   pixi run train-decoder wm_run=logdir/world_model/r2dreamer/<timestamp>
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+wm_run: ???                         # stage-1 run directory
+wm_checkpoint: ${wm_run}/checkpoints/wm_best.pt   # lowest holdout loss; wm_latest.pt also works
+logdir: ${wm_run}/decoder/${now:%Y-%m-%d_%H-%M-%S}
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 16
+  num_workers: 4
+
+decoder:
+  lr: 3e-4
+
+trainer:
+  steps: 20000
+  log_every: 250
+  video_every: 2000
+  ckpt_every: 5000                  # overwrite checkpoints/decoder_latest.pt (also written at the end)
+  resume: null                      # null | auto | path to a .pt
+
+rollout:
+  context: 8                        # observed steps (40 frames: reveal, cover, first pause), then imagine
+  episodes: 4                       # clips per video, from holdout and from train
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  mode: online                      # online | offline | disabled
+  tags: []
+
+tensorboard: true
