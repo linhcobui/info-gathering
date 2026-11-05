@@ -4,7 +4,7 @@
 
 **Headline:** Hand-crafted-backtracking uses no privileged labels and matches Align-privileged exactly. Its posterior is right on all 567 test episodes, from 0 to 8 swaps. Its labels come from the frozen Naive decoder's sure moments, carried through the real swaps (see [Hand-crafted-backtracking](#hand-crafted-backtracking)).
 
-![how the five runs are built: same data; four SMT runs that differ only in alignment, plus the DreamerV3 baseline](../figures/all3_runs_diagram.png)
+![how the five runs are built: same data; four SMT runs that differ only in alignment, plus the DreamerV3 baseline](figures/all3_runs_diagram.png)
 
 *Figure 1. How each run is built, with accuracy at the lift (0–3 column = the lowest of the four trained depths).*
 
@@ -54,7 +54,7 @@
 
 ## Results
 
-![accuracy and F1 by number of swaps, all five runs](../figures/all3_by_swaps.png)
+![accuracy and F1 by number of swaps, all five runs](figures/all3_by_swaps.png)
 
 *Figure 2. Accuracy and F1 by number of swaps. Hand-crafted-backtracking (dashed, hollow) lies exactly on Align-privileged at 1.00. DreamerV3 (dotted, squares) is scored through imagined pixels rather than the memory read-out; see [its section](#baseline-native-dreamerv3).*
 
@@ -155,7 +155,7 @@ The labels never use the hidden ball slot or the swap identities.
 | ball in slot 2: frames labelled **right** | 43% (522), none wrong | **41%** (443), none wrong |
 | right by swaps done (0 / 1 / 2 / 3) | 100 / 100 / 79 / 75% | **100 / 100 / 100 / 100%** |
 
-![label quality: how often each label set is right, and how many frames it labels correctly](../figures/all3_labels.png)
+![label quality: how often each label set is right, and how many frames it labels correctly](figures/all3_labels.png)
 
 *Figure 3. The two self-made label sets on the training episodes. Left: share of labelled frames that are right, by swaps already done. Right: share of still frames that get the right label, by where the ball really is (hatched = labelled wrong). True slot used only for scoring.*
 

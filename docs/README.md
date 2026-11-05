@@ -7,6 +7,7 @@ Design notes, plans and results, newest project last. Each doc gives its own sta
 | Doc | What |
 |---|---|
 | [NEW_MACHINE.md](NEW_MACHINE.md) | Setup checklist for the new GPU machine (handoff, 2026-11-04) |
+| [RESULTS.md](RESULTS.md) | The main result figures with captions (shell game vs DreamerV3, OGBar, DINO-WM errors) |
 
 ## Conventions
 

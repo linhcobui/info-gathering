@@ -218,7 +218,7 @@ pixi run python scripts/seg_video.py paths.out_dir=outputs/detectors/jump_classi
     --episodes heldout200/ep058 heldout200/ep073 heldout200/ep184 v3_400/ep056
 ```
 
-Diagnostics (privileged scoring): `scripts/seg_lift_check.py` (§5–6), `scripts/seg_metric_compare.py` (§4), `scripts/seg_signal_check.py` (§2), `scripts/seg_error_hist.py` (error histograms: [pooled](../outputs/diagnostics/error_hist_pooled.png), [per episode](../outputs/diagnostics/error_hist_episodes.png)).
+Diagnostics (privileged scoring): `scripts/seg_lift_check.py` (§5–6), `scripts/seg_metric_compare.py` (§4), `scripts/seg_signal_check.py` (§2), `scripts/seg_error_hist.py` (error histograms: [pooled](figures/error_hist_pooled.png), [per episode](figures/error_hist_episodes.png)).
 
 | Output | What |
 |---|---|

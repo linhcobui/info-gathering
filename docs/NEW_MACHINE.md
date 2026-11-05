@@ -99,7 +99,7 @@ Where it stopped: the best detector is the "jump" detector on the 4-step, worst-
 ## 9. Small leftovers
 
 - `README.md` (root) still describes only the original shell-game datasets. Ask the user whether to update it.
-- `figures/` is gitignored and empty here. Docs that embed figures show broken images until the figures are regenerated.
+- The main result figures are in git under `docs/figures/`, shown in [RESULTS.md](RESULTS.md). The top-level `figures/` (everything else) is gitignored and empty here: regenerate what you need, and copy any figure that becomes a main result into `docs/figures/`.
 
 ## Working rules the user has set (details in the memory notes)
 

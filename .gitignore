@@ -9,6 +9,6 @@ logdir/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
-outputs/
+/outputs/
 # figures stay local (regenerated from code)
-figures/
+/figures/

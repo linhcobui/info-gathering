@@ -1,6 +1,6 @@
 """F1 vs number of swaps: Naive SMT, DreamerV3, Belief (Align-Walk) without / with DMT, Align-privileged.
 
-    pixi run python scripts/plot_f1_by_swaps.py [--out figures/f1_by_swaps/f1_by_swaps.png]
+    pixi run python scripts/plot_f1_by_swaps.py [--out docs/figures/f1_by_swaps.png]
 
 F1 of "ball under the lifted cup" at the final lift, shown-start test sets (63 episodes per swap count).
 SMT runs: posterior memory chained from frame 0, decoder read-out at lift offset 1 (onset probes, ALL3-U data,
@@ -32,7 +32,7 @@ RUNS = [  # name, F1 at 0..8 swaps, colour, line style, marker
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default="figures/f1_by_swaps/f1_by_swaps.png")
+    ap.add_argument("--out", default="docs/figures/f1_by_swaps.png")
     args = ap.parse_args()
     out = ROOT / args.out
     out.parent.mkdir(parents=True, exist_ok=True)

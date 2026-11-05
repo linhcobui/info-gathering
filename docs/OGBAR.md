@@ -63,7 +63,7 @@ Copied files carry a header naming their OGBench source (commit a977253, MIT; li
 - **Without it.** MuJoCo's contacts are slightly soft, so friction can never fully stop motion: under a steady twist, a held bar slowly creeps around the fingers (about 0.5–3°/s), at any friction value (tested up to 4.0).
 - **With it.** The no-slip pass recomputes the friction forces as hard limits after each step. Friction then either holds completely or slips, like textbook friction.
 
-**How far from the COM the bar holds level** (flat pads + no-slip; lift 15 cm, hold 2 s, no noise, 3 mass splits × both sides, every 0.5 cm; [`figures/ogbar_hold_level_noslip.png`](../figures/ogbar_hold_level_noslip.png), video in `data/videos_ogbar_hold_level/`):
+**How far from the COM the bar holds level** (flat pads + no-slip; lift 15 cm, hold 2 s, no noise, 3 mass splits × both sides, every 0.5 cm; [`figures/ogbar_hold_level_noslip.png`](figures/ogbar_hold_level_noslip.png), video in `data/videos_ogbar_hold_level/`):
 
 | Grip distance from COM | Tilt after a 2 s hold |
 |---|---|
@@ -71,9 +71,9 @@ Copied files carry a header naming their OGBench source (commit a977253, MIT; li
 | 5–6.5 cm | borderline: median 4–17°, depending on mass split and side |
 | ≥ 7 cm | swings to 25–50° |
 
-![Bar tilt after a 2 s hold against grip distance from the COM, with and without no-slip](../figures/ogbar_hold_level_noslip.png)
+![Bar tilt after a 2 s hold against grip distance from the COM, with and without no-slip](figures/ogbar_hold_level_noslip.png)
 
-![Eight lifts of the same bar (100/100 g), gripped 0, 2, 4, 5, 6, 7, 8 and 10 cm from the COM, filmed side-on; the green ring marks the COM](../figures/ogbar_hold_level_noslip_still.png)
+![Eight lifts of the same bar (100/100 g), gripped 0, 2, 4, 5, 6, 7, 8 and 10 cm from the COM, filmed side-on; the green ring marks the COM](figures/ogbar_hold_level_noslip_still.png)
 
 The cutoff is set by pad friction × grip force. With no-slip, pad friction 0.5 moves it to about 5 cm and 1.0 to about 7 cm.
 
