@@ -4,3 +4,16 @@
 [submodule "submodules/r2dreamer"]
 	path = submodules/r2dreamer
 	url = https://github.com/NM512/r2dreamer.git
+[submodule "submodules/smt"]
+	path = submodules/smt
+	url = https://github.com/akarshkumar0101/smt
+[submodule "submodules/ReMemBench"]
+	path = submodules/ReMemBench
+	url = https://github.com/ShahRutav/ReMemBench
+[submodule "submodules/robosuite"]
+	path = submodules/robosuite
+	url = https://github.com/ShahRutav/robosuite
+	branch = abs_robot
+[submodule "submodules/ogbench"]
+	path = submodules/ogbench
+	url = https://github.com/seohongpark/ogbench.git

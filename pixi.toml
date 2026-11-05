@@ -52,13 +52,45 @@ torchrl = "==0.9.2"
 tensordict = "==0.9.1"
 hydra-core = "==1.3.2"
 gymnasium = "==1.2.0"
-einops = "==0.3.0"
+einops = "==0.8.1"          # bumped from 0.3.0 for x-transformers; nothing else uses einops
+x-transformers = "==2.18.5" # the attention stack SMT is written against (submodules/smt/requirements.txt)
 "ruamel.yaml" = "==0.17.4"
 moviepy = "==1.0.3"
 tensorboard = ">=2.20,<3"
 
+# OGBar (src/ogbar, adapted from submodules/ogbench): dm_control for mjcf scene
+# assembly. 1.0.46 is the newest release that accepts mujoco 3.13; 1.0.48 forces 3.15.
+dm_control = "==1.0.46"
+
 # experiment tracking
 wandb = "*"
+pandas = ">=3.1.0, <4"
+pyarrow = ">=26.0.1, <27"
+pytest = ">=9.2.0, <10"
+
+# ---------------------------------------------------------------------------
+# ReMemBench (submodules/ReMemBench, a RoboCasa fork) + its robosuite fork
+# (submodules/robosuite, branch abs_robot). Separate environment: robocasa
+# hard-pins numpy==1.23.3 / numba==0.56.4 / mujoco==3.2.6, and numba 0.56 has
+# no Python 3.11 build, so it cannot share the default env (numpy 2, mujoco 3.13).
+#   pixi run -e remembench remembench-download-assets   # ~5GB kitchen assets
+#   pixi run -e remembench remembench-setup-macros
+# ---------------------------------------------------------------------------
+[feature.remembench.dependencies]
+python = "3.10.*"
+pip = "*"
+libglvnd = "*"
+
+[feature.remembench.pypi-dependencies]
+robosuite = { path = "submodules/robosuite", editable = true }
+robocasa = { path = "submodules/ReMemBench", editable = true }
+
+[feature.remembench.tasks]
+remembench-download-assets = { cmd = "python robocasa/scripts/download_kitchen_assets.py", cwd = "submodules/ReMemBench" }
+remembench-setup-macros = { cmd = "python robocasa/scripts/setup_macros.py", cwd = "submodules/ReMemBench" }
+
+[environments]
+remembench = { features = ["remembench"], no-default-feature = true }
 
 [tasks]
 # convenience shortcuts — run with `pixi run <name>`
@@ -69,6 +101,9 @@ generate-memtest2 = "python scripts/generate_memtest2.py"
 generate-memtest3 = "python scripts/generate_memtest2.py --config configs/data/memtest3.yaml"
 generate-memtest4 = "python scripts/generate_memtest4.py"
 generate-memtest5 = "python scripts/generate_memtest4.py --config configs/data/memtest5.yaml"
+generate-ogbar = "python scripts/generate_ogbar.py"
+ogbar-sweep = "python scripts/ogbar_physics_sweep.py"
+ogbar-report = "python scripts/ogbar_report.py"
 preprocess-frames = "python scripts/preprocess_frames.py"
 train-wm = "python scripts/train_world_model.py"
 train-decoder = "python scripts/train_decoder.py"
@@ -76,3 +111,60 @@ eval-lift = "python scripts/eval_lift_rollout.py"
 eval-memtest1 = "python scripts/eval_memtest1.py"
 probe-latent = "python scripts/probe_latent.py"
 rollout-videos = "python scripts/rollout_videos.py"
+
+# preliminary: SMT-supervised memory over frozen Dreamer embeddings
+cache-embeddings-prelim = "python scripts/cache_embeddings_prelim.py"
+train-smt-prelim = "python scripts/train_smt_prelim.py"
+train-pixel-decoder-prelim = "python scripts/train_decoder.py --config-dir configs/smt_prelim --config-name pixel_decoder_prelim"
+closure-smt-prelim = "python scripts/closure_smt_prelim.py"
+eval-smt-prelim = "python scripts/eval_memtest1.py --config-dir configs/smt_prelim --config-name eval_memtest4_prelim"
+
+# phase 1: vector memory, prior/posterior updaters, reward-only decoder
+verify-smt-phase1 = "python scripts/verify_smt_phase1.py"
+train-smt-phase1 = "python scripts/train_smt_phase1.py"
+closure-smt-phase1 = "python scripts/closure_smt_phase1.py"
+train-readout-phase1 = "python scripts/train_readout_phase1.py"
+train-pixel-decoder-phase1 = "python scripts/train_decoder.py --config-dir configs/smt_phase1 --config-name pixel_decoder_phase1"
+eval-smt-phase1 = "python scripts/eval_memtest1.py --config-dir configs/smt_phase1 --config-name eval_memtest4_phase1"
+readout-ceiling-phase1 = "python scripts/readout_ceiling_phase1.py"
+onset-probe-phase1 = "python scripts/onset_probe_phase1.py"
+train-smt-phase1-big = "python scripts/train_smt_phase1.py --config-name train_memtest4_big_phase1"
+train-smt-phase1-big-noobs = "python scripts/train_smt_phase1.py --config-name train_memtest4_big_noobs_phase1"
+train-smt-phase1-big-noobs-slot = "python scripts/train_smt_phase1.py --config-name train_memtest4_big_noobs_slot_phase1"
+train-smt-phase1-big-noobs-slotdense = "python scripts/train_smt_phase1.py --config-name train_memtest4_big_noobs_slotdense_phase1"
+train-smt-phase1-big-noobs-slotdense-nounif = "python scripts/train_smt_phase1.py --config-name train_memtest4_big_noobs_slotdense_nounif_phase1"
+train-smt-phase1-depth1 = "python scripts/train_smt_phase1.py --config-name train_memtest4_depth1_phase1"
+train-dmt-phase1 = "python scripts/train_dmt_phase1.py"
+train-dmt-phase1-big = "python scripts/train_dmt_phase1.py --config-name dmt_big_phase1"
+train-smt-phase1-aligndense = "python scripts/train_smt_phase1.py --config-name train_memtest4_big_aligndense_phase1"
+train-smt-phase1-alignlift = "python scripts/train_smt_phase1.py --config-name train_memtest4_big_alignlift_phase1"
+train-smt-phase1-aligntarget = "python scripts/train_smt_phase1.py --config-name train_memtest4_big_aligntarget_phase1"
+train-smt-phase1-alignpos = "python scripts/train_smt_phase1.py --config-name train_memtest4_big_alignpos_phase1"
+train-smt-phase1-alignpossep = "python scripts/train_smt_phase1.py --config-name train_memtest4_big_alignpossep_phase1"
+train-smt-phase1-scene-noalign = "python scripts/train_smt_phase1.py --config-name train_memtest4_big_scene_noalign_phase1"
+train-smt-phase1-symbol-noalign = "python scripts/train_smt_phase1.py --config-name train_memtest4_big_symbol_noalign_phase1"
+train-smt-phase1-oracle-noalign = "python scripts/train_smt_phase1.py --config-name train_memtest4_big_oracle_noalign_phase1"
+train-smt-phase1-oracle-align = "python scripts/train_smt_phase1.py --config-name train_memtest4_big_oracle_align_phase1"
+train-smt-phase1-aligndtw = "python scripts/train_smt_phase1.py --config-name train_memtest4_big_aligndtw_phase1"
+train-smt-phase1-aligndtw-attract = "python scripts/train_smt_phase1.py --config-name train_memtest4_big_aligndtwattract_phase1"
+train-smt-phase1-aligndtwpair = "python scripts/train_smt_phase1.py --config-name train_memtest4_big_aligndtwpair_phase1"
+build-dtw-matrix = "python scripts/build_dtw_matrix.py"
+train-smt-phase1-alignembed = "python scripts/train_smt_phase1.py --config-name train_memtest4_big_alignembed_phase1"
+train-smt-phase1-depth1-alignlift = "python scripts/train_smt_phase1.py --config-name train_memtest4_depth1_alignlift_phase1"
+train-smt-phase1-delta-tok-lo = "python scripts/train_smt_phase1.py --config-name train_memtest4_big_delta_tok_lo_phase1"
+train-smt-phase1-delta-tok-hi = "python scripts/train_smt_phase1.py --config-name train_memtest4_big_delta_tok_hi_phase1"
+train-smt-phase1-delta-dim = "python scripts/train_smt_phase1.py --config-name train_memtest4_big_delta_dim_phase1"
+train-smt-phase1-delta-depth1 = "python scripts/train_smt_phase1.py --config-name train_memtest4_depth1_delta_phase1"
+train-smt-phase1-depth1-noobs = "python scripts/train_smt_phase1.py --config-name train_memtest4_depth1_noobs_phase1"
+# TWIN_FINETUNE.md: C0 (0-3 swaps), C1 (S1 + finetune pool, labelled), the finetune, the report
+train-smt-phase1-s3-noobs = "python scripts/train_smt_phase1.py --config-name train_memtest4_s3_noobs_phase1"
+train-smt-phase1-s3ft-noobs = "python scripts/train_smt_phase1.py --config-name train_memtest4_s3ft_noobs_phase1"
+build-twin-ft-data = "python scripts/build_twin_ft_data.py"
+finetune-twin-phase1 = "python scripts/finetune_twin_phase1.py"
+twin-ft-report = "python scripts/twin_ft_report.py"
+train-smt-phase1-window60 = "python scripts/train_smt_phase1.py --config-name train_memtest4_window60_phase1"
+train-smt-phase1-window60-alignpos = "python scripts/train_smt_phase1.py --config-name train_memtest4_window60_alignpos_phase1"
+train-smt-phase1-window60-alignself = "python scripts/train_smt_phase1.py --config-name train_memtest4_window60_alignself_phase1"
+train-smt-phase1-window60-alignselfpred = "python scripts/train_smt_phase1.py --config-name train_memtest4_window60_alignselfpred_phase1"
+midhold-probe-phase1 = "python scripts/midhold_probe_phase1.py"
+delta-extract = "python scripts/delta_extract.py"          # stage 2: python3 scripts/delta_analyze.py (system python, needs scikit-learn)
