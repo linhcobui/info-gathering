@@ -1,0 +1,71 @@
+# PHASE 1, DTW PAIRING WITH ATTRACT+HINGE. No label anywhere. Positives and negatives come from
+# the DTW distance between FUTURE EMBEDDING TRAJECTORIES, cached by scripts/build_dtw_matrix.py:
+#
+#     pull = mean over pairs with dtw < align_near of ||z_i - z_j||^2
+#     push = mean over pairs with dtw > align_far  of relu(align_margin - ||z_i - z_j||)^2
+#
+# This replaces the metric-regression arm (align_label: dtw), which FAILED. Only 1.64% of
+# eligible pairs carry signal (dtw ~ 0); the rest have targets set by future choreography the
+# state cannot know, so regressing on all pairs fits noise -- measured R^2 = -0.37 after 20k
+# steps, and the state geometry came out at between/within 0.73 where ALIGN-LIFT reaches 8.95.
+# Thresholding keeps the two informative tails and discards the middle.
+#
+# Restricted to rest anchors whose future still contains MOTION, read off the embeddings rather
+# than the swap schedule, so nothing privileged enters. In the post-swap slack two different
+# non-target slots have IDENTICAL futures: measured 1-vs-2 pull 1.00x of same-slot unrestricted,
+# 0.23x restricted, with all three cross-slot pairs then at 0.26-0.30.
+#
+# batch_size 512 (other arms use 128): only 8.2% of anchors are eligible and only 1.64% of their
+# pairs are positives, so a smaller batch yields too few positive pairs per step.
+#   pixi run train-smt-phase1-aligndtwpair
+defaults:
+  - data: memtest4_big_windows
+  - data@data_anchors: memtest4_big_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_memtest4_big/${now:%Y-%m-%d_%H-%M-%S}_memtest4_big_aligndtwpair_phase1
+seed: 0
+device: cuda:1
+
+loader:
+  batch_size: 512
+  num_workers: 4
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4_big
+  mode: online
+  tags: [phase1, smt, memtest4]
+
+tensorboard: true
+
+model:
+  embed_stats_zarr: data/memtest4_big.zarr
+  arch:
+    decoder_obs: false
+    reward_head: binary       # same weak head as ALIGN-LIFT / ALIGN-TARGET / ALIGN-DTW
+  loss:
+    coef_unif: 0.0
+    coef_align: 0.1
+    coef_sep: 1.0e-3
+    align_label: dtwpair
+    align_near: 1.0           # dtw below this = positive  (the 1.64% tail)
+    align_far: 5.0            # dtw above this = negative  (p5 of the eligible distribution)
+    align_margin: 20.0        # same margin the slot/target arms settle at
+    align_dtw_path: data/dtw_memtest4_big.npz

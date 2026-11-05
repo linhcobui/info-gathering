@@ -1,0 +1,50 @@
+# PHASE 1, COMPOSITION TEST. Same model as the dense-slot arm (no-obs decoder, 3-way slot head,
+# dense per-frame supervision) but trained ONLY on episodes with at most ONE swap
+# (data/memtest4_depth1.zarr). The teacher therefore cannot memorise swap sequences: there are
+# only 9 and it sees them all. Evaluated on data/memtest4_eval.zarr (0-4 swaps), so every 2+
+# swap episode asks the posterior chain to compose a depth it never trained on.
+#   pixi run train-smt-phase1-depth1
+defaults:
+  - data: memtest4_depth1_windows
+  - data@data_anchors: memtest4_depth1_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_memtest4_depth1/${now:%Y-%m-%d_%H-%M-%S}_memtest4_depth1_phase1
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 128
+  num_workers: 4
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4_depth1
+  mode: online
+  tags: [phase1, smt, memtest4]
+
+tensorboard: true
+
+model:
+  embed_stats_zarr: data/memtest4_depth1.zarr   # mean/std from THIS training set
+  arch:
+    decoder_obs: false
+    reward_head: slot
+  loss:
+    slot_supervision: dense

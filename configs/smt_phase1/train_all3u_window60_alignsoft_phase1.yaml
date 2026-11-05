@@ -1,0 +1,56 @@
+# ALL3-U data, WINDOW60 arch, 20,000 steps, batch 128 (as every ALL3-U arm). ALIGN-SOFT: Align-Walk with SOFT pairs
+# (scripts/soft_pairs_phase1.py): two memories whose recent frames match are run through K = 8 borrowed real
+# futures; s = min over every decoder test of (1 - |d_x - d_y|), decoder = mean of frozen Naive-U and its twin.
+# Every pair is pulled with weight s and pushed (uniformity on unit-norm tokens) with weight 1 - s. No labels.
+defaults:
+  - data: memtest4_all3u_windows
+  - data@data_anchors: memtest4_all3u_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_all3u/alignsoft
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 128
+  num_workers: 2                # RAM: the shared machine dies above 125 GB
+  pair_file: data/pairs_soft_all3u.npz
+  neg_pairs_per_batch: 8
+  pairs_per_batch: 16
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4
+  mode: online
+  tags: [phase1, smt, all3u, window60, alignsoft]
+
+tensorboard: true
+
+model:
+  fut_len: 60
+  arch:
+    decoder_obs: true
+    decoder_layout: paired
+  loss:
+    coef_unif: 0.0
+    coef_align: 0.1
+    coef_sep: 1.0e-3            # push on NEGATIVE pairs: relu(align_margin - ||z_x - z_y||)^2, as ALIGN-LIFT / dtwpair
+    align_margin: 20.0
+    align_label: soft            # pull with weight s, push (uniformity) with weight 1 - s
+    align_pair_path: data/pairs_soft_all3u.npz

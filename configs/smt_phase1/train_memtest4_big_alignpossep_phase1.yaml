@@ -1,0 +1,71 @@
+# PHASE 1, ALIGNMENT ON THE POSITIVES OF THE LIFT BIT ONLY.
+# Identical to ALIGN-TARGET except that the align loss is applied ONLY where the ball IS under
+# the cup that lifts. Those states are a genuine equivalence class: same slot, whatever the
+# history. The negative class is not -- the lifted cup is always slot 0, so "not under it" lumps
+# slot 1 with slot 2, and pulling it together merges them (measured on ALIGN-TARGET: 1<->2
+# prototype distance 1.90 vs a within-class spread of 6.76). That partition is not closed under
+# the swaps, which is why ALIGN-TARGET decayed with depth: 0.522 F1 at 4 swaps, 0.383 at 5.
+#
+# Tests whether the PARTITION was the problem, holding the label and its privilege level fixed.
+#   pixi run train-smt-phase1-alignpossep
+# ---- original ALIGN-TARGET header ----
+# PHASE 1, ALIGNMENT ON THE LIFT BIT ONLY. As ALIGN-LIFT, except that positive pairs are no
+# longer defined by the privileged 3-way slot label. Two rest states are positives iff they
+# agree on ONE bit -- "is the ball under the cup that will be lifted" -- the same bit the reward
+# head is scored on. Pairs join states at ANY swap depth, 0 through 4.
+#
+# The question: does alignment still compress and compose when it is told only the task's own
+# output, rather than the full 3-way partition? ALIGN-LIFT's depth extrapolation is a result
+# about log2(3) bits per rest frame; this arm is the same experiment at 1 bit.
+#   pixi run train-smt-phase1-alignpossep
+defaults:
+  - data: memtest4_big_windows
+  - data@data_anchors: memtest4_big_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_memtest4_big/${now:%Y-%m-%d_%H-%M-%S}_memtest4_big_alignpossep_phase1
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 128
+  num_workers: 4
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4_big
+  mode: online
+  tags: [phase1, smt, memtest4]
+
+tensorboard: true
+
+model:
+  embed_stats_zarr: data/memtest4_big.zarr   # mean/std from THIS training set
+  arch:
+    decoder_obs: false
+    reward_head: binary       # identical head to ALIGN-LIFT: 1 bit on the 9 lift frames
+  loss:
+    coef_unif: 0.0            # blind uniformity OFF
+    coef_align: 0.1           # same coefficients as ALIGN-LIFT, so only the LABEL differs
+    coef_sep: 1.0e-3          # back on, same value as ALIGN-LIFT/ALIGN-TARGET
+    align_margin: 20.0
+    align_label: target
+    align_positive_only: true # align ONLY the positives (as ALIGN-POS)
+    align_positive_sep: true  # THE change vs ALIGN-POS: restore the hinge, using the negative
+                              # class's MEAN only -- a rigid push, never a pull-together.

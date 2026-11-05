@@ -1,0 +1,53 @@
+# ALL3-U (docs/ALL3U.md): ALL3 plus closed-start episodes (start slot never shown), half with one mid-hold peek, so the
+# honest belief is sometimes uncertain (1/3) or two-way (1/2). data/memtest4_all3u.zarr, 768 training episodes.
+# WINDOW60 arch, 20,000 steps, batch 128, as ALL3. Only the alignment term differs between the three runs.
+# HAND-CRAFTED: pull-only alignment on the belief built without labels: backtracking where the start was shown, forward-only filtering where it was not (scripts/belief_labels_phase1.py --mode handcrafted).
+defaults:
+  - data: memtest4_all3u_windows
+  - data@data_anchors: memtest4_all3u_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_all3u/handcrafted
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 128
+  num_workers: 2                # RAM: the shared machine dies above 125 GB
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4
+  mode: online
+  tags: [phase1, smt, all3u, window60, handcrafted]
+
+tensorboard: true
+
+model:
+  fut_len: 60
+  arch:
+    decoder_obs: true
+    decoder_layout: paired
+  loss:
+    coef_unif: 0.0
+    coef_align: 0.1
+    coef_sep: 0.0
+    align_label: file
+    align_label_path: data/labels_belief_all3u_handcrafted.npz  # 0 {0} 1 {a} 2 {b} 3 {0,a,b} 4 {a,b} 5 {0,a} 6 {0,b}; -1 none
+    align_class_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]   # x coef_align: all seven 0.1

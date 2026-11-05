@@ -1,0 +1,66 @@
+# PRELIMINARY v0: SMT-supervised, RSSM-shaped Markov state over frozen R2-Dreamer embeddings.
+_target_: world_model.models.smt_prelim.SmtPrelimWM
+name: smt_prelim
+image_size: 64
+window: null                  # the standard data configs interpolate ${model.window}
+
+# the frozen encoder: the trained memtest4 stage-1 checkpoint (see configs/smt_prelim/cache_embeddings.yaml)
+encoder_checkpoint: logdir/world_model/r2dreamer_memtest4/2026-09-14_18-57-20_memtest4/checkpoints/wm_latest.pt
+expect_step: 15000
+embed_key: embed_r2d_memtest4_wm15000
+embed_stats_zarr: data/memtest4.zarr    # mean/std come from the TRAIN split's .zattrs
+
+ctx_len: 10                   # THE knob. 10-frame trailing window; cannot bridge holds > 10.
+fut_len: 10
+eval_stoch: mode              # mode | sample
+imagine_mode: markov          # markov | window
+observe_mode: recurrent       # recurrent = SMT's read_with_teacher_rnn (teacher warms up, then
+                              # the cell is unrolled over real embeddings); window = teacher-only,
+                              # memory capped at ctx_len
+state_mode: tokens            # tokens = SMT as written: memory is K tokens and the updater is a
+                              # transformer over [memory ; observation ; action], so observations
+                              # reach the state directly.
+                              # rssm   = the Dreamer cell, whose ONLY observation channel is a
+                              # 32x16 categorical -- measured to pass exactly 0.0 (SMT_PRELIM 6.4).
+                              # Defaults to rssm in code so pre-existing checkpoints still load.
+
+native:                       # must match the config the encoder weights were trained under
+  size: size12M
+  overrides:
+    rep_loss: r2dreamer
+    compile: false
+
+teacher:
+  d_model: 256
+  n_registers: 10              # 10 * 256 = 2560 = deter(2048) + stoch*discrete(512)
+  encoder_depth: 8
+  decoder_depth: 4
+  updater_depth: 8             # the SMT belief updater (state_mode: tokens)
+  n_heads: 8
+  rotary_pos_emb: true
+  use_rmsnorm: true
+  twin_ball_decoder: false     # true = the ball head gets its own decoder of identical shape,
+                               # instead of sharing the trunk that predicts the latents
+
+loss:
+  coef_dec: 1.0
+  coef_dyn: 0.1
+  coef_kl_dyn: 1.0
+  coef_kl_rep: 0.1
+  coef_unif: 1.0e-3          # SMT's default, over the memory tokens
+  gamma: 1.0
+  kl_free: 0.0               # NOT the native 1.0: 1 nat would hide a 3-way slot label
+  unif_sample: 512
+  # Weight each prediction by what the memory buys, not by how large the error is.
+  # none = plain SMT. nomem = weight by the same decoder's error with the state zeroed.
+  # Measured on memtest4: cup kinematics are 96% of prediction pairs and 99% of the squared
+  # error but need no memory; ball reveals are ~1% of both.
+  reweight: none             # none | nomem
+  reweight_warmup: 2000      # uniform weights until the no-memory path is worth listening to
+  reweight_clip: 1.0e9
+  reweight_floor: 0.0
+  # Auxiliary head on the causal decoder: "will the ball be visible at this future step",
+  # supervised only at show offsets 1-9 (the final lift, once the cup has risen). This trains on
+  # the quantity the eval measures, so runs with coef_ball > 0 are NOT comparable to the
+  # R2-Dreamer 0.714 baseline -- report them as their own aux-supervised condition.
+  coef_ball: 1.0

@@ -1,0 +1,17 @@
+# PHASE 1 gate 4: does the posterior chain stay on the teacher's manifold over ~40 steps?
+# Run this BEFORE rendering any pixels. If the chain diverges, the eval cannot work and
+# nothing downstream is interpretable.
+#   pixi run closure-smt-phase1 wm_run=<smt_phase1 run dir>
+hydra:
+  run:
+    dir: ${outdir}
+  job:
+    chdir: false
+
+wm_run: ???
+wm_checkpoint: ${wm_run}/checkpoints/wm_latest.pt
+outdir: ${wm_run}/closure/${now:%Y-%m-%d_%H-%M-%S}
+device: cuda:0
+zarr_path: data/memtest4_eval.zarr
+episodes: 24
+horizon: 60                   # covers the longest chain the eval demands (measured max 57)

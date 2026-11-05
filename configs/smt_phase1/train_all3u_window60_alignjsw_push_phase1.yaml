@@ -1,0 +1,56 @@
+# ALL3-U data, WINDOW60 arch, 20,000 steps, batch 128 (as every ALL3-U arm). ALIGN-JSW-PUSH: no positive/negative pairs.
+# Pairs = any two frames whose last 3 frames + actions match (soft_pairs_phase1.py --rule jsweight --tests lifts);
+# both memories run through K = 64 borrowed real futures, judged by frozen Naive-U at every REAL lift onset.
+# Every pair is pulled with weight w = 1 - max JS and pushed apart (uniformity on the pair, unit-norm tokens) with weight max JS. No labels.
+defaults:
+  - data: memtest4_all3u_windows
+  - data@data_anchors: memtest4_all3u_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_all3u/alignjsw_push
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 128
+  num_workers: 2                # RAM: the shared machine dies above 125 GB
+  pair_file: data/pairs_jsw_all3u.npz
+  neg_pairs_per_batch: 0
+  pairs_per_batch: 24
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4
+  mode: online
+  tags: [phase1, smt, all3u, window60, alignjsw_push]
+
+tensorboard: true
+
+model:
+  fut_len: 60
+  arch:
+    decoder_obs: true
+    decoder_layout: paired
+  loss:
+    coef_unif: 0.0               # no blind uniformity: the push below is per pair, scaled by JS
+    coef_align: 0.1
+    coef_sep: 1.0e-3            # push each pair with weight max JS = 1 - w (as Align-Walk coef)
+    align_margin: 20.0
+    align_label: soft            # pull with w = 1 - max JS, push with 1 - w = max JS
+    align_pair_path: data/pairs_jsw_all3u.npz

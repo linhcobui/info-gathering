@@ -1,0 +1,52 @@
+# PHASE 1, ALIGN-LIFT trained on DEPTH-1 DATA ONLY (0-1 swaps). The extrapolation test for
+# alignment: the head gets one bit per episode at the lift, alignment supplies the equivalence
+# structure, and NO training episode contains a composed sequence. Evaluated on memtest4_eval
+# (0-4 swaps) and memtest4_eval5 (5 swaps), so depths 2-5 are all unseen by construction.
+#   pixi run train-smt-phase1-depth1-alignlift
+defaults:
+  - data: memtest4_depth1_windows
+  - data@data_anchors: memtest4_depth1_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_memtest4_depth1/${now:%Y-%m-%d_%H-%M-%S}_memtest4_depth1_alignlift_phase1
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 128
+  num_workers: 4
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4_depth1
+  mode: online
+  tags: [phase1, smt, memtest4]
+
+tensorboard: true
+
+model:
+  embed_stats_zarr: data/memtest4_depth1.zarr   # mean/std from THIS training set
+  arch:
+    decoder_obs: false
+    reward_head: binary
+  loss:
+    coef_unif: 0.0            # blind uniformity OFF
+    coef_align: 0.1           # the main compression pressure in this arm
+    coef_sep: 1.0e-3
+    align_margin: 20.0

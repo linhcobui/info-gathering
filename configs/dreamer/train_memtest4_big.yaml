@@ -1,0 +1,21 @@
+# memtest4_big: the R2-Dreamer (DreamerV3-lineage) benchmark on the SAME 500-episode dataset
+# the smt_phase1 data-scale arm used, evaluated on the SAME data/memtest4_eval.zarr.
+#
+# Steps are doubled from train_memtest4.yaml's 15000 so the model gets the same 1000 epochs
+# over twice the data (500 episodes / batch 16 = 31 updates per epoch). Everything else is
+# identical to the original memtest4 baseline that scored F1 0.714.
+#   pixi run train-wm --config-name train_memtest4_big
+defaults:
+  - train
+  - override data: memtest4_big
+  - _self_
+
+logdir: logdir/world_model/${model.name}_memtest4_big/${now:%Y-%m-%d_%H-%M-%S}_memtest4_big
+
+trainer:
+  steps: 30000              # 1000 epochs: 500 episodes / batch 16 = 31 updates per epoch
+  eval_every: 1e9           # no holdout split, so no holdout eval and no wm_best.pt
+
+wandb:
+  group: ${model.name}_memtest4_big
+  tags: [memtest4, memtest4_big, data_scale]

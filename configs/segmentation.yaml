@@ -1,0 +1,111 @@
+# Error-spike segmentation with the existing, frozen DINO-WM (docs/recon.md, docs/assumptions.md).
+# Every knob of the pipeline lives here; the code has no other magic numbers.
+#   pixi run python scripts/compute_wm_errors.py        # step 1: per-step WM errors          -> outputs/wm_errors.parquet
+#   pixi run python scripts/make_labels.py              # step 2: episode split, lambda, y_t  -> outputs/labels.parquet
+#   pixi run python scripts/train_g.py                  # step 3: error predictor g           -> outputs/g_scores.parquet
+#   pixi run python scripts/find_candidate_tests.py     # steps 4-6: windows, resolvability, export, diagnostics, REPORT.md
+# Any key can be overridden on the command line as a dotlist, e.g. `on_thresh=0.6 g.arch=transformer`.
+
+seed: 0
+device: cuda:0
+
+paths:
+  out_dir: outputs
+  wm_ckpt: logdir/world_model/dino_wm_ogbar/v3_400_proprio/checkpoints/wm_latest.pt
+
+# Episodes to run on. wm_train = the DINO-WM was trained on this store (its errors are in-sample).
+stores:
+  - name: v3_400
+    zarr: data/ogbar_v3_400.zarr
+    cache: data/ogbar_v3_400_dinov2
+    wm_train: true
+  - name: heldout200
+    zarr: data/ogbar_v3_heldout200.zarr
+    cache: data/ogbar_v3_heldout200_dinov2
+    wm_train: false
+
+history_len: 3          # H; must equal the WM's num_hist
+frameskip: 5            # model step = 5 raw steps, offset 0
+error_horizon: 1        # h: err_t scores the WM's prediction of frame t+h from context ending at t (h > 1: open loop,
+                        # errors from scripts/compute_rollout_errors.py + rollout_to_errors.py)
+
+# ---- step 1: WM errors
+errors:
+  batch_size: 64
+  bf16: true            # autocast as in the WM's training and video scripts
+  save_wm_features: true
+  topk: 16              # err_l2_topk: mean over the k worst patches (of 256)
+  change_thresh: 15.0   # err_l2_changed: a patch 'changed' if |e_{t+1} - e_t| > this (token L2)
+  cls: true             # also the CLS-token errors (decode predicted patches, re-encode with DINOv2)
+  wm_feature_layer: 4   # predictor layer (0-5) whose output, mean over the last context frame's patches, is g's `wm` input
+
+# ---- step 2: split, threshold, labels
+split_fractions: [0.6, 0.2, 0.2]  # held-out episodes -> g train / val / test (by episode, never by timestep)
+error_metric: err_l2_mean          # err_l2_mean | err_l2_max | err_l2_topk | err_cos_mean | err_l2_masked
+normalise: global                  # global | episode (z-score per episode) | detrend (minus a centred rolling median)
+detrend_window: 9                  # steps of that rolling median
+lambda_stat: mean                  # mean: lambda = the average error over the fit episodes (user, 2026-11-03) | quantile
+lambda_quantile: 0.9               # with lambda_stat quantile: this quantile of the (normalised) metric
+lambda_: null                      # a fixed lambda instead of the quantile
+lambda_fit_splits: [train]         # which held-out splits lambda is fit on
+
+# ---- step 3: error predictor g(e_{t-H+1:t}, a_t) ~ P(err_t > lambda)
+g:
+  pooling: mean          # mean (patch mean per frame) | attn (learned-query attention over patches) | wm (WM predictor features)
+  arch: mlp              # mlp | transformer (over the H frame tokens + an action token)
+  hidden: 256
+  depth: 2               # MLP hidden layers or transformer layers
+  heads: 4
+  dropout: 0.1
+  use_action: true       # the a_t input (false = the no-action ablation)
+  n_actions: 1           # actions a_t .. a_{t+n-1} as input; set to error_horizon for an h-step error
+  use_proprio: false     # also feed the context frames' proprio (19-D)
+  reg_head: true         # extra head predicting log(err_t) (standardised)
+  reg_weight: 0.5
+  class_weight: auto     # auto = BCE pos_weight (1 - pi) / pi from the train split | none | a number
+  calibrate: platt       # platt (fit a, b on val logits, unweighted BCE) | none
+  lr: 1.0e-3
+  weight_decay: 1.0e-4
+  batch_size: 512
+  epochs: 40
+  patience: 6            # epochs without a better val AUPRC before stopping
+  ece_bins: 15
+  ablate_action: true    # also train the no-action ablation and compare
+  action_flag_auroc_delta: 0.02   # flag "action barely matters" if test AUROC drops by less than this without a_t
+  attn_norm_sample: 20000         # patches sampled to estimate attn-pooling input mean/std
+
+# ---- step 4: segmentation (on q_tau = g_{tau-1}: the probability that frame tau is mispredicted)
+seg_method: hysteresis   # hysteresis | entropy
+smooth_window: 1         # centred moving average over model steps (1 = off)
+on_thresh: 0.5            # g is calibrated: > 0.5 = more likely than not above lambda
+off_thresh: 0.3
+merge_gap: 2             # merge windows separated by fewer than this many steps
+min_len: 1
+max_len: 12              # longer windows keep their max_len-step stretch with the highest mean q
+onset_score: peak        # peak | mean of q inside the window
+entropy:
+  window: 3              # moving-average width of the binary entropy h(q)
+  min_prominence: 0.05   # entropy peaks (window boundaries) need at least this prominence
+
+# ---- step 5: resolvability
+resolve_horizon: 8       # K: frames after the window that are scored
+resolve_min_horizon: 3   # windows whose truncated K is shorter are skipped
+resolve_metric: null     # null = error_metric (err_l2_masked not supported here)
+n_control_windows: 200   # random control windows per window length (and control group)
+control_episodes: same_split   # same_split (controls from episodes with the window's wm_train flag) | heldout | all
+control_margin: 0        # controls also stay this many steps clear of every candidate window
+control_max_tries: 50    # sampling attempts per control before giving up
+resolve_batch_size: 32
+
+# ---- step 6: export and diagnostics
+export:
+  margin_before: 3       # frame_paths: t_start - margin_before .. t_end
+  n_outcome: 4           # outcome_frame_paths: t_end + 1 .. t_end + n_outcome
+  image_format: png
+  max_windows_with_frames: null   # null = export frames for every window
+diagnostics:
+  n_episode_plots: 20
+  n_montage: 20          # top-N and bottom-N windows by resolvability
+  montage_frames: 8
+  montage_thumb: 112
+  event_tolerance: 2     # a window "meets" a privileged event (diagnostics only) within this many steps

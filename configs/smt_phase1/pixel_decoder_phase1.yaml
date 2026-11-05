@@ -1,0 +1,44 @@
+# PHASE 1 stage 2b: fit the embed -> pixel head on frozen cached embeddings.
+# Self-contained (no defaults list): it is loaded from a second config dir alongside
+# configs/dreamer, so an inherited default would be ambiguous.
+# Point wm_run at the STAGE 2a (readout) run, not at stage 1 -- otherwise imagined frames are
+# rendered from a randomly initialised readout.
+#   pixi run train-pixel-decoder-phase1 wm_run=<smt_phase1 run>/readout/<ts>
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+wm_run: ???
+wm_checkpoint: ${wm_run}/checkpoints/wm_latest.pt
+logdir: ${wm_run}/pixel_decoder_phase1/${now:%Y-%m-%d_%H-%M-%S}
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 16
+  num_workers: 4
+
+decoder:
+  lr: 3e-4
+
+trainer:
+  steps: 10000
+  log_every: 250
+  video_every: 1000           # phase 1 CAN imagine from step 0 of stage 2b: the prior needs no
+                              # predicted embedding, and the readout is already fitted
+  ckpt_every: 5000
+  resume: null
+
+rollout:
+  context: 8
+  episodes: 4
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  mode: online
+  tags: [phase1, smt_phase1]
+
+tensorboard: true

@@ -1,0 +1,70 @@
+# PHASE 1, ALIGNMENT WITH NO LABEL AT ALL. Positive/negative structure comes from the DTW
+# distance between FUTURE EMBEDDING TRAJECTORIES, read off the cached embeddings:
+#
+#     L_align = mean over cross-episode pairs of ( ||z_i - z_j|| - align_lambda * dtw_ij )^2
+#
+# Two states whose futures coincide are pulled together whatever their past -- 79% of matched
+# pairs join DIFFERENT swap depths (gap up to 4), which is the depth-merging pressure.
+#
+# Restricted to rest anchors whose future still contains MOTION (read off the embeddings, not
+# the swap schedule). In the post-swap slack, two different non-target slots have identical
+# futures, so unrestricted pairing collapses them: measured 1-vs-2 pull 1.00x of same-slot
+# unrestricted, 0.23x restricted. Restricted, all three cross-slot pairs sit at 0.26-0.30 of
+# the same-slot pull -- the 3-way structure, with no privileged label.
+#
+# batch_size is 256, not the 128 of the other arms: only 8.2% of anchors are eligible, so 128
+# would score ~45 pairs per step. Noted as a deliberate difference.
+#   pixi run train-smt-phase1-aligndtw
+defaults:
+  - data: memtest4_big_windows
+  - data@data_anchors: memtest4_big_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_memtest4_big/${now:%Y-%m-%d_%H-%M-%S}_memtest4_big_aligndtw_phase1
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 256
+  num_workers: 4
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4_big
+  mode: online
+  tags: [phase1, smt, memtest4]
+
+tensorboard: true
+
+model:
+  embed_stats_zarr: data/memtest4_big.zarr
+  arch:
+    decoder_obs: false
+    reward_head: binary       # same weak head as ALIGN-LIFT / ALIGN-TARGET
+  loss:
+    coef_unif: 0.0
+    coef_align: 5.0e-4        # SET BY MEASUREMENT, not guessed. The term is a squared DISTANCE
+                              # (~1e2), not a per-dim mean (~1e-2), so its raw encoder-gradient
+                              # norm is 2.33e3. ALIGN-LIFT total alignment pressure = align 0.163
+                              # + sep 0.918 = 1.08; 1.08/2333 = 4.6e-4. Same pressure, different
+                              # definition of what should align.
+    coef_sep: 0.0             # unused in dtw mode: the regression supplies its own repulsion
+    align_label: dtw
+    align_lambda: 2.0
+    align_dtw_path: data/dtw_memtest4_big.npz

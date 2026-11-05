@@ -1,0 +1,60 @@
+# ALL3-U (docs/ALL3U.md) data and WINDOW60 arch, 20,000 steps, batch 128, as Naive / Hand-crafted / Align-privileged.
+# ALIGN-SPLICE: pull-only alignment on POSITIVE PAIRS found without any privileged information
+# (scripts/splice_pairs_phase1.py on the frozen Naive-U + its seed-1 twin): walk back from a frame where the
+# decoder says "ball under the left cup" in episode b, splice another episode's memory at a frame whose last 3
+# embeddings + actions match, run the posterior through b's real frames, and keep the pair only if every
+# decoder (both models, both lift timings) says yes. No classes: each pair is pulled together on its own.
+# + NEGATIVES from the same test: every decoder says p < 0.01 after the splice (same events, no ball) -> pushed apart.
+# Every batch carries `pairs_per_batch` pairs (both partners as anchors); the rest is drawn uniformly.
+defaults:
+  - data: memtest4_all3u_windows
+  - data@data_anchors: memtest4_all3u_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_all3u/alignsplice_neg
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 128
+  num_workers: 2                # RAM: the shared machine dies above 125 GB
+  pair_file: data/pairs_splice_all3u_neg.npz
+  neg_pairs_per_batch: 8
+  pairs_per_batch: 16
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4
+  mode: online
+  tags: [phase1, smt, all3u, window60, alignsplice, neg]
+
+tensorboard: true
+
+model:
+  fut_len: 60
+  arch:
+    decoder_obs: true
+    decoder_layout: paired
+  loss:
+    coef_unif: 0.0
+    coef_align: 0.1
+    coef_sep: 1.0e-3            # push on NEGATIVE pairs: relu(align_margin - ||z_x - z_y||)^2, as ALIGN-LIFT / dtwpair
+    align_margin: 20.0
+    align_label: pairs
+    align_pair_path: data/pairs_splice_all3u_neg.npz

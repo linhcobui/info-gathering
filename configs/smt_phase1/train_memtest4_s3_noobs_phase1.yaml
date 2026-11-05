@@ -1,0 +1,46 @@
+# TWIN_FINETUNE C0 stage 1: the unaligned BASELINE (no-obs decoder) trained on 0-3 swaps only.
+# Identical to train_memtest4_big_noobs_phase1.yaml except the data: data/memtest4_s3.zarr is
+# memtest4_big's 378 episodes with <= 3 swaps (scripts/build_twin_ft_data.py). Its readout and
+# pixel decoder become the FROZEN dictionary every finetune arm (F1-F3) is trained against.
+#   pixi run train-smt-phase1-s3-noobs
+defaults:
+  - data: memtest4_s3_windows
+  - data@data_anchors: memtest4_s3_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_twinft/${now:%Y-%m-%d_%H-%M-%S}_s3_noobs_phase1
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 128
+  num_workers: 4
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_twinft
+  mode: online
+  tags: [phase1, smt, memtest4, twinft]
+
+tensorboard: true
+
+model:
+  embed_stats_zarr: data/memtest4_s3.zarr   # mean/std from THIS training set
+  arch:
+    decoder_obs: false

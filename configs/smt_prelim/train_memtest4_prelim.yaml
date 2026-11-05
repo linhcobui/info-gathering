@@ -1,0 +1,39 @@
+# PRELIMINARY. Stage 1b: SMT-supervised memory on cached memtest4 embeddings.
+#   pixi run train-smt-prelim
+#   pixi run train-smt-prelim model.ctx_len=60      # the full-prefix control
+defaults:
+  - data: memtest4_windows
+  - data@data_anchors: memtest4_anchors
+  - model: smt_prelim
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_prelim_memtest4/${now:%Y-%m-%d_%H-%M-%S}_memtest4_prelim
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 128
+  num_workers: 4
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_prelim_memtest4
+  mode: online
+  tags: [preliminary, smt, memtest4]
+
+tensorboard: true

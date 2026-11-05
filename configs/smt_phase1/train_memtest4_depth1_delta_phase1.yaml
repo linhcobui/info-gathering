@@ -1,0 +1,51 @@
+# DELTA arm D-depth1 (docs/DELTA.md 6), THE HEADLINE: label-free closure from 0-1-swap data. Token mask, lambda 0.1 (best token arm: D-tok-hi).
+# Identical to train_memtest4_depth1_noobs_phase1.yaml (its control: no-obs decoder, binary
+# lift head, coef_unif 1e-3, 20k steps) except the updaters are event-gated:
+#     z_{t+1} = (1 - m) * z_t + m * z_hat,   m = sigmoid(MaskNet(event)),   + lambda_t * mean(m)
+#   pixi run train-smt-phase1-delta-depth1
+defaults:
+  - data: memtest4_depth1_windows
+  - data@data_anchors: memtest4_depth1_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_memtest4_depth1/${now:%Y-%m-%d_%H-%M-%S}_memtest4_depth1_delta_phase1
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 128
+  num_workers: 4
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4_depth1
+  mode: online
+  tags: [phase1, smt, memtest4, delta]
+
+tensorboard: true
+
+model:
+  embed_stats_zarr: data/memtest4_depth1.zarr   # mean/std from THIS training set
+  arch:
+    decoder_obs: false
+    reward_head: binary
+    delta_mask: token
+  loss:
+    coef_delta: 0.1
+    delta_warmup_steps: 5000

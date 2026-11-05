@@ -1,0 +1,48 @@
+# PHASE 1, DATA-SCALE arm: identical model and hyperparameters to
+# train_memtest4_phase1.yaml, trained on data/memtest4_big.zarr (500 episodes, growth
+# concentrated on 2-4 swaps) instead of data/memtest4.zarr (250, uniform).
+#
+# Coverage of the 3 x 3^swaps permutation space, before -> after:
+#     2 sw 1.9x -> 4.7x      3 sw 0.6x -> 1.6x      4 sw 0.2x -> 0.5x
+# Everything else is held fixed, so any change in eval F1 at depth >= 2 is attributable to
+# coverage alone. Evaluated on the SAME data/memtest4_eval.zarr (seed 1) as the baseline arm.
+#   pixi run train-smt-phase1-big
+defaults:
+  - data: memtest4_big_windows
+  - data@data_anchors: memtest4_big_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_memtest4_big/${now:%Y-%m-%d_%H-%M-%S}_memtest4_big_phase1
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 128
+  num_workers: 4
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4_big
+  mode: online
+  tags: [phase1, smt, memtest4]
+
+tensorboard: true
+
+model:
+  embed_stats_zarr: data/memtest4_big.zarr   # mean/std from THIS training set

@@ -1,0 +1,15 @@
+# PRELIMINARY gate D: state-chaining error against the teacher, before any pixel is rendered.
+#   pixi run closure-smt-prelim wm_run=<smt_prelim run dir>
+hydra:
+  run:
+    dir: ${outdir}
+  job:
+    chdir: false
+
+wm_run: ???
+wm_checkpoint: ${wm_run}/checkpoints/wm_latest.pt
+outdir: ${wm_run}/closure/${now:%Y-%m-%d_%H-%M-%S}
+device: cuda:0
+zarr_path: data/memtest4_eval.zarr
+episodes: 24
+horizon: 20

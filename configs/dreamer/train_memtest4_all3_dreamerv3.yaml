@@ -1,0 +1,24 @@
+# ALL3 baseline: native DreamerV3 (pixel reconstruction, rep_loss "dreamer") on every swap order of 0-3 swaps.
+# Same data as the ALL3 SMT runs (data/memtest4_all3.zarr, all 408 episodes incl. the 24 the SMT runs held out).
+# Evaluated like the earlier Dreamer baselines: watch the real frames up to the lift, imagine the lift from the
+# actions alone, decode, and look for the ball (eval_memtest4.yaml).
+defaults:
+  - train
+  - override data: memtest4_all3
+  - _self_
+
+model:
+  name: dreamerv3
+  native:
+    overrides:
+      rep_loss: dreamer             # native DreamerV3: reconstruction shapes the latent
+
+logdir: logdir/world_model/${model.name}_memtest4_all3/${now:%Y-%m-%d_%H-%M-%S}_memtest4_all3
+
+trainer:
+  steps: 25500              # 1000 epochs: 408 episodes / batch 16 = 25.5 updates per epoch
+  eval_every: 1e9           # no holdout split, so no holdout eval and no wm_best.pt
+
+wandb:
+  group: ${model.name}_memtest4_all3
+  tags: [memtest4, all3, dreamerv3, baseline]

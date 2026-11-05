@@ -1,0 +1,59 @@
+# ALL3 ALIGN-PRIVILEGED: pull-only alignment on the TRUE ball slot at still hold frames; left (slot 0, the
+# lifted cup), middle and right all 0.1. No separation, no uniformity.
+# ALL3 side-by-side (2026-10-08): trained on EVERY swap order of 0-3 swaps (data/memtest4_all3.zarr, 384 training
+# episodes, 96 per depth, + 24 held out); tested on 0-3 (memtest4_eval) and 4-8 swaps (OOD). WINDOW60 arch:
+# teacher window 60, paired reward decoder seeing future frames, fut_len 60. Only the alignment term differs.
+# WINDOW60 (docs/WINDOW60.md): teacher window 60, reward-decoder window 60, decoder input = one
+# (frame, action-taken-at-it) token per step. Identical to train_memtest4_phase1.yaml (P1-250: same
+# 250-episode data, model, steps, batch) except fut_len 20 -> 60 and the paired decoder layout.
+# The reward target is unchanged: "ball revealed" on lift offsets 1-9, masked everywhere before.
+#   pixi run train-smt-phase1-window60
+defaults:
+  - data: memtest4_all3_windows
+  - data@data_anchors: memtest4_all3_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_all3/alignpriv
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 128
+  num_workers: 2                # RAM: the shared machine dies above 125 GB
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4
+  mode: online
+  tags: [phase1, smt, all3, window60, alignpriv]
+
+tensorboard: true
+
+model:
+  fut_len: 60                   # from frame 13 (last frame before swap 1) the decoder reaches the first
+                                # scored lift frame in every episode: needs 38 (train) / 46 (test)
+  arch:
+    decoder_obs: true
+    decoder_layout: paired
+  loss:
+    coef_unif: 0.0
+    coef_align: 0.1
+    coef_sep: 0.0
+    align_label: slot             # privileged: the true slot
+    align_class_weights: [1.0, 1.0, 1.0]   # x coef_align: left, middle, right all 0.1 (privileged: every slot is known)

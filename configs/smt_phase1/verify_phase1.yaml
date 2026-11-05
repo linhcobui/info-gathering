@@ -1,0 +1,19 @@
+# PHASE 1 gates 1-3: dataset, gradient attribution, shapes and causality.
+# Run before launching training -- a stray .detach() looks healthy right up to the final eval.
+#   pixi run verify-smt-phase1
+#   pixi run verify-smt-phase1 gates=1          # dataset only; no GPU, no frozen encoder
+defaults:
+  - data@data_anchors: memtest4_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${outdir}
+  job:
+    chdir: false
+
+outdir: /tmp/verify_smt_phase1/${now:%Y-%m-%d_%H-%M-%S}
+seed: 0
+device: cuda:0
+gates: 1,2,3,4

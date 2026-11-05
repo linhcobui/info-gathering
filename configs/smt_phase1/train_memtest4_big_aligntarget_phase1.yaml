@@ -1,0 +1,57 @@
+# PHASE 1, ALIGNMENT ON THE LIFT BIT ONLY. As ALIGN-LIFT, except that positive pairs are no
+# longer defined by the privileged 3-way slot label. Two rest states are positives iff they
+# agree on ONE bit -- "is the ball under the cup that will be lifted" -- the same bit the reward
+# head is scored on. Pairs join states at ANY swap depth, 0 through 4.
+#
+# The question: does alignment still compress and compose when it is told only the task's own
+# output, rather than the full 3-way partition? ALIGN-LIFT's depth extrapolation is a result
+# about log2(3) bits per rest frame; this arm is the same experiment at 1 bit.
+#   pixi run train-smt-phase1-aligntarget
+defaults:
+  - data: memtest4_big_windows
+  - data@data_anchors: memtest4_big_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_memtest4_big/${now:%Y-%m-%d_%H-%M-%S}_memtest4_big_aligntarget_phase1
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 128
+  num_workers: 4
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4_big
+  mode: online
+  tags: [phase1, smt, memtest4]
+
+tensorboard: true
+
+model:
+  embed_stats_zarr: data/memtest4_big.zarr   # mean/std from THIS training set
+  arch:
+    decoder_obs: false
+    reward_head: binary       # identical head to ALIGN-LIFT: 1 bit on the 9 lift frames
+  loss:
+    coef_unif: 0.0            # blind uniformity OFF
+    coef_align: 0.1           # same coefficients as ALIGN-LIFT, so only the LABEL differs
+    coef_sep: 1.0e-3
+    align_margin: 20.0
+    align_label: target       # THE change: 2 classes from the lift bit, not 3 from the slot

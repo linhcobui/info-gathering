@@ -1,0 +1,27 @@
+# PHASE 1 gate 5: bracket the imagined number between the decoder's ceiling and the readout's.
+# Scores recon / readout(posterior states) / readout(teacher states) / imagined on the same
+# episodes, same detector, same pixel head -- so the three differences isolate the decoder, the
+# readout and the memory respectively.
+#   pixi run readout-ceiling-phase1 decoder_run=<pixel_decoder_phase1 run>
+hydra:
+  run:
+    dir: ${outdir}
+  job:
+    chdir: false
+
+decoder_run: ???
+decoder_checkpoint: ${decoder_run}/checkpoints/decoder_latest.pt
+zarr_path: data/memtest4_eval.zarr
+outdir: ${decoder_run}/readout_ceiling_phase1/${now:%Y-%m-%d_%H-%M-%S}
+device: cuda:0
+seed: 0
+
+horizon: 9
+label_key: ball_under_target
+meta_keys: [ball_under_target, ball_slot, phase]
+
+detector:
+  threshold: 0.15
+  min_pixels: 3
+
+hold_offset: 20        # memtest4 has no closed phase: reveal 10 + show 10 outside the hold

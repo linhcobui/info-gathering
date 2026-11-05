@@ -1,0 +1,41 @@
+# PRELIMINARY stage 2: fit the embed -> pixel head on frozen cached embeddings.
+# Self-contained (no defaults list): it is loaded from a second config dir alongside
+# configs/dreamer, so an inherited default would be ambiguous.
+#   pixi run train-pixel-decoder-prelim wm_run=<smt_prelim run dir>
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+wm_run: ???
+wm_checkpoint: ${wm_run}/checkpoints/wm_latest.pt
+logdir: ${wm_run}/pixel_decoder_prelim/${now:%Y-%m-%d_%H-%M-%S}
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 16
+  num_workers: 4
+
+decoder:
+  lr: 3e-4
+
+trainer:
+  steps: 10000
+  log_every: 250
+  video_every: 0              # the stage-3 model cannot imagine yet; no rollout videos
+  ckpt_every: 5000
+  resume: null
+
+rollout:
+  context: 8
+  episodes: 4
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  mode: online
+  tags: [preliminary, smt_prelim]
+
+tensorboard: true

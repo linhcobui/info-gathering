@@ -1,0 +1,37 @@
+# PRELIMINARY. Cache the trained memtest4 Dreamer encoder's per-frame embeddings into the
+# existing memtest4 zarrs as a new array. Nothing existing is modified.
+#   pixi run cache-embeddings-prelim
+#   pixi run cache-embeddings-prelim overwrite=true
+hydra:
+  run:
+    dir: ${outdir}
+  job:
+    chdir: false
+
+outdir: logdir/embed_cache_prelim/${now:%Y-%m-%d_%H-%M-%S}
+device: cuda:0
+seed: 0
+
+# The trained stage-1 checkpoint. That run had no holdout split (eval_every: 1e9), so no
+# wm_best.pt was ever written -- wm_latest.pt at step 15000 is the only, and therefore the
+# best, checkpoint, and it is the one behind the F1 0.714 baseline this experiment targets.
+checkpoint: logdir/world_model/r2dreamer_memtest4/2026-09-14_18-57-20_memtest4/checkpoints/wm_latest.pt
+expect_step: 15000
+embed_key: embed_r2d_memtest4_wm15000
+image_size: 64
+block: 512
+overwrite: false
+
+native:                    # must match the config the weights were trained under
+  size: size12M
+  overrides:
+    rep_loss: r2dreamer
+    compile: false
+
+targets:
+  - data/memtest4.zarr
+  - data/memtest4_eval.zarr
+
+verify:
+  reencode_samples: 64     # frames re-encoded with a reloaded copy of the same encoder
+  probe_visible_frames: true

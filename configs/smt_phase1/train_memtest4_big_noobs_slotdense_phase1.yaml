@@ -1,0 +1,50 @@
+# PHASE 1, DENSE-SLOT arm. Identical to train_memtest4_big_noobs_slot_phase1.yaml except the
+# 3-way slot label is supervised on EVERY real future step (reveal, hold, swaps, lift), not only
+# the 9 lift frames. During a swap the label keeps the old slot for frames 0-2 and switches to
+# the new slot at frame 3, where the smoothstep arc crosses halfway. PRIVILEGED: the ball is
+# hidden under a cup for most of these frames. Binary metrics stay on the lift frames.
+#   pixi run train-smt-phase1-big-noobs-slotdense
+defaults:
+  - data: memtest4_big_windows
+  - data@data_anchors: memtest4_big_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_memtest4_big/${now:%Y-%m-%d_%H-%M-%S}_memtest4_big_noobs_slotdense_phase1
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 128
+  num_workers: 4
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4_big
+  mode: online
+  tags: [phase1, smt, memtest4]
+
+tensorboard: true
+
+model:
+  embed_stats_zarr: data/memtest4_big.zarr   # mean/std from THIS training set
+  arch:
+    decoder_obs: false
+    reward_head: slot
+  loss:
+    slot_supervision: dense

@@ -1,0 +1,57 @@
+# ALL3-U data, WINDOW60 arch, 20,000 steps, batch 128 (as every ALL3-U arm). ALIGN-JS64: Align-Walk's loss (pull
+# positives, uniformity push on negatives) on pairs judged by K = 64 borrowed real futures (scripts/soft_pairs_phase1.py
+# --rule js, frozen Naive-U only): POSITIVE if the max Jensen-Shannon divergence between the two memories' decoder answers
+# over all tests < 0.05 bits, NEGATIVE if > 0.5 bits, otherwise ignored. No labels.
+defaults:
+  - data: memtest4_all3u_windows
+  - data@data_anchors: memtest4_all3u_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_all3u/alignjs64
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 128
+  num_workers: 2                # RAM: the shared machine dies above 125 GB
+  pair_file: data/pairs_js64_all3u.npz
+  neg_pairs_per_batch: 8
+  pairs_per_batch: 16
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4
+  mode: online
+  tags: [phase1, smt, all3u, window60, alignjs64]
+
+tensorboard: true
+
+model:
+  fut_len: 60
+  arch:
+    decoder_obs: true
+    decoder_layout: paired
+  loss:
+    coef_unif: 0.0
+    coef_align: 0.1
+    coef_sep: 1.0e-3            # push on NEGATIVE pairs: relu(align_margin - ||z_x - z_y||)^2, as ALIGN-LIFT / dtwpair
+    align_margin: 20.0
+    align_label: pairs
+    align_neg: unif              # uniformity on negative pairs, as Align-Walk
+    align_pair_path: data/pairs_js64_all3u.npz

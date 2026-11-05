@@ -1,0 +1,60 @@
+# docs/TWIN_FINETUNE.md: finetune ONLY the two updaters on unlabelled episodes, against a frozen
+# dictionary (readout + pixel decoder). Self-contained (no defaults list).
+#   pixi run finetune-twin-phase1 decoder_run=<C0 pixel_decoder_phase1 run> name=f3
+# Arms (docs/TWIN_FINETUNE.md 6):  f1  loss.w_recon=0 loss.w_twin=0     reveal only
+#                             f2  loss.w_twin=0                     reveal + stay readable
+#                             f3  (defaults)                        reveal + readable + twin
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+decoder_run: ???                  # C0's pixel decoder run; its wm_checkpoint is the readout run
+decoder_checkpoint: ${decoder_run}/checkpoints/decoder_latest.pt
+ft_zarr: data/memtest4_ft.zarr    # the finetune pool: frames only, no label is ever read
+name: f3
+logdir: ${decoder_run}/twin_ft/${name}
+device: cuda:0
+seed: 0
+resume: null                      # auto = continue from <logdir>/checkpoints/ft_latest.pt
+
+steps: 3000
+batch_size: 16                    # whole episodes
+lr: 1.0e-6                        # measured, not guessed: the gradient through a ~50-step chain is
+                                  # ~170 at step 1, and Adam moves every one of ~16M weights by ~lr per
+                                  # step. On the 0-4 baseline 3e-5 broke tracking within 10 steps (batch
+                                  # acc .94 -> .71), 3e-6 faded the rendered ball (kth yellowness .81 ->
+                                  # .39), 1e-6 held acc .92-.97 while the reveal loss fell .83 -> .37.
+weight_decay: 0.0
+clip_grad_norm: 1.0
+amp_dtype: bfloat16               # the updaters and readout, as in stage 1 and the eval
+ema: 0.999                        # twin <- ema * twin + (1 - ema) * online, after every step
+
+loss:
+  w_reveal: 1.0
+  w_recon: 10.0                   # embedding space: the readout's own training loss on the new states.
+                                  # It sits at ~0.005 when the states are readable, so weight 10 makes a
+                                  # doubling of it cost ~10% of the reveal loss (~0.5). Not tuned.
+  w_twin: 10.0                    # mean squared state gap to the EMA twin; ~5e-4 at lr 1e-6 in the smoke
+                                  # runs, ~0.07 when 3e-5 broke tracking. Weight 10: same reasoning. Not tuned.
+  reveal_from_offset: 2           # the real frame shows the ball (if any) from show offset 2 on
+
+# differentiable form of the eval's yellow-pixel detector (info_gathering/ball_detector.py): the
+# eval says "ball" when >= 3 pixels have yellowness > 0.15, i.e. when the 3rd-LARGEST yellowness
+# exceeds 0.15. The loss uses that order statistic:  logit = (kth_yellowness - threshold) / scale,
+# so its call matches the eval's exactly. scale 0.05: an empty frame (kth ~ 0) costs BCE 0.05, a
+# missed ball (kth ~ 0 when it should be ~0.8) costs 3.0.
+soft_ball:
+  k: 3                            # = detector.min_pixels
+  threshold: 0.15                 # = detector.threshold
+  scale: 0.05
+
+detector:                         # the eval's hard detector: targets and logged accuracy
+  threshold: 0.15
+  min_pixels: 3
+
+horizon: 9                        # imagined lift frames, as in the eval
+log_every: 50
+ckpt_every: 500
+export_twin: true                 # also export the EMA twin (evaluated separately)

@@ -1,0 +1,46 @@
+# ALL3-U (docs/ALL3U.md): ALL3 plus closed-start episodes (start slot never shown), half with one mid-hold peek, so the
+# honest belief is sometimes uncertain (1/3) or two-way (1/2). data/memtest4_all3u.zarr, 768 training episodes.
+# WINDOW60 arch, 20,000 steps, batch 128, as ALL3. Only the alignment term differs between the three runs.
+# NAIVE: no alignment.
+defaults:
+  - data: memtest4_all3u_windows
+  - data@data_anchors: memtest4_all3u_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_all3u/naive
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 128
+  num_workers: 2                # RAM: the shared machine dies above 125 GB
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4
+  mode: online
+  tags: [phase1, smt, all3u, window60, naive]
+
+tensorboard: true
+
+model:
+  fut_len: 60
+  arch:
+    decoder_obs: true
+    decoder_layout: paired

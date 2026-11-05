@@ -1,0 +1,39 @@
+# PHASE 1 stage 1: vector memory, prior/posterior updaters, reward-only decoder.
+#   pixi run train-smt-phase1
+#   pixi run train-smt-phase1 model.eval_warmup=60     # the smt_prelim-equivalent control
+defaults:
+  - data: memtest4_windows
+  - data@data_anchors: memtest4_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_memtest4/${now:%Y-%m-%d_%H-%M-%S}_memtest4_phase1
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 128
+  num_workers: 4
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4
+  mode: online
+  tags: [phase1, smt, memtest4]
+
+tensorboard: true

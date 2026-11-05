@@ -1,0 +1,22 @@
+# PHASE 1: read the reward head at the lift ONSET, by cup-swap count.
+# The pixel eval's ceiling rows all render states taken AT the lift frames, which the posterior
+# and the teacher have already observed -- they bound the rendering path, not the memory. This
+# probe reads the state before the cup moves, through read-outs that see no observation at all.
+#   pixi run onset-probe-phase1 wm_run=<smt_phase1 run dir>
+hydra:
+  run:
+    dir: ${outdir}
+  job:
+    chdir: false
+
+wm_run: ???
+wm_checkpoint: ${wm_run}/checkpoints/wm_latest.pt
+outdir: ${wm_run}/onset_probe/${now:%Y-%m-%d_%H-%M-%S}
+device: cuda:0
+seed: 0
+
+zarr_path: data/memtest4_eval.zarr
+horizon: 9                     # the same 9 prior steps the pixel eval imagines
+label_key: ball_under_target
+meta_keys: [ball_under_target, ball_slot, phase]
+hold_offset: 20                # memtest4 has no closed phase: reveal 10 + show 10 outside the hold

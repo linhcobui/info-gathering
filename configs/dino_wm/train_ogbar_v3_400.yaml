@@ -1,0 +1,66 @@
+# DINO-WM + proprioception on OGBar v3 (400 episodes, all used for training; eval later).
+#   pixi run python scripts/train_dino_wm.py
+#   pixi run python scripts/train_dino_wm.py model.use_proprio=false   # vision-only ablation
+# Hyperparameters follow DINO-WM's conf/train.yaml (predictor vit, decoder vqvae, proprio/action emb 10).
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/dino_wm_ogbar/${now:%Y-%m-%d_%H-%M-%S}_${model.tag}
+seed: 0
+device: cuda:0
+
+data:
+  zarr_path: data/ogbar_v3_400.zarr
+  cache_dir: data/ogbar_v3_400_dinov2
+  frameskip: 5                  # model step = 5 raw steps; action = 5 raw actions concatenated (25)
+
+model:
+  tag: proprio
+  num_hist: 3
+  num_pred: 1
+  action_emb_dim: 10
+  proprio_emb_dim: 10
+  use_proprio: true
+  has_decoder: true
+  predictor:
+    depth: 6
+    heads: 16
+    dim_head: 64
+    mlp_dim: 2048
+    dropout: 0.1
+    emb_dropout: 0.0
+  decoder:
+    channel: 384
+    n_res_block: 4
+    n_res_channel: 128
+    out_size: 224
+
+optim:
+  predictor_lr: 5.0e-4
+  action_encoder_lr: 5.0e-4
+  decoder_lr: 3.0e-4
+
+loader:
+  batch_size: 32
+  num_workers: 10
+
+trainer:
+  steps: 100000
+  bf16: true
+  log_every: 100
+  recon_every: 2000
+  ckpt_every: 2000
+  keep_every: 25000
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: dino_wm_ogbar
+  mode: online
+  tags: [dino_wm, ogbar, proprio]
+
+tensorboard: true

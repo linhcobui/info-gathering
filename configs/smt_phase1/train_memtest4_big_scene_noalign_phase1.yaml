@@ -1,0 +1,58 @@
+# OBSERVATION CONTROL (scene, no alignment): cup xyz sorted by x, identity hidden, no swap-pair channel, visibility from the render.
+#
+# Supersedes the earlier oracle arm, which was INVALID: it set ball_shown from
+# (phase==show AND ball_under_target), so the flag fired at the lift ONSET while the cup was
+# still down -- handing the onset probe its answer in 113/315 eval episodes. Visibility here is
+# read from the render (ball_detector), and the onset leak is verified 0/878.
+#   pixi run train-smt-phase1-oracle-noalign
+defaults:
+  - data: memtest4_big_windows
+  - data@data_anchors: memtest4_big_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_memtest4_big/${now:%Y-%m-%d_%H-%M-%S}_memtest4_big_scene_noalign_phase1
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 128
+  num_workers: 4
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4_big
+  mode: online
+  tags: [phase1, smt, memtest4, oracle]
+
+tensorboard: true
+
+data:
+  meta_keys: [ball_under_target, ball_slot, phase, embed_scene_state]
+
+model:
+  oracle_obs: true
+  embed_key: embed_scene_state
+  embed_stats_zarr: data/memtest4_big.zarr
+  arch:
+    decoder_obs: false
+    reward_head: binary
+  loss:
+    coef_unif: 1.0e-3
+    coef_align: 0.0
+    coef_sep: 0.0

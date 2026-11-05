@@ -1,0 +1,47 @@
+# DELTA control for D-depth1 (docs/DELTA.md 6): the D-base recipe -- no-obs decoder, binary lift head,
+# coef_unif 1e-3, NO alignment, NO gate -- trained on 0-1-swap episodes only
+# (data/memtest4_depth1.zarr). The existing P1-DEPTH1 run used dense privileged slot labels, so
+# it is not the unlabelled control D-depth1 must be read against.
+#   pixi run train-smt-phase1-depth1-noobs
+defaults:
+  - data: memtest4_depth1_windows
+  - data@data_anchors: memtest4_depth1_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_memtest4_depth1/${now:%Y-%m-%d_%H-%M-%S}_memtest4_depth1_noobs_phase1
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 128
+  num_workers: 4
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4_depth1
+  mode: online
+  tags: [phase1, smt, memtest4, delta]
+
+tensorboard: true
+
+model:
+  embed_stats_zarr: data/memtest4_depth1.zarr   # mean/std from THIS training set
+  arch:
+    decoder_obs: false
+    reward_head: binary

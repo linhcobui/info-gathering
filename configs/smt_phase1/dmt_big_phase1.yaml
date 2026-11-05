@@ -1,0 +1,50 @@
+# PHASE 1 stage 1b: DMT on the 500-episode set. Same as dmt_phase1.yaml but with the big
+# rollout data, for arms trained on memtest4_big.
+#   pixi run train-dmt-phase1-big wm_run=<smt_phase1 run dir>
+defaults:
+  - data@data_rollouts: memtest4_big_rollouts
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+wm_run: ???
+wm_checkpoint: ${wm_run}/checkpoints/wm_latest.pt
+logdir: ${wm_run}/dmt/${now:%Y-%m-%d_%H-%M-%S}
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 24
+  num_workers: 4
+
+dmt:
+  lr: 1.0e-4
+  weight_decay: 1.0e-2
+  clip_grad_norm: 1.0
+  amp_dtype: bfloat16
+  coef_dyn: 1.0
+  coef_prior: 1.0
+  coef_slot: 1.0
+  detach_rnn: true
+  detach_readout: true
+  cache_teacher: true
+
+trainer:
+  steps: 6000
+  log_every: 250
+  eval_every: 1000
+  ckpt_every: 2000
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4_big
+  mode: online
+  tags: [phase1, dmt, memtest4_big]
+
+tensorboard: true

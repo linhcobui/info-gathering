@@ -1,0 +1,88 @@
+# PHASE 1, ALIGNMENT WITH NO LABEL AT ALL -- ATTRACT-ONLY VARIANT.
+# As aligndtw, but dtw is used as a soft PULL weight w=exp(-dtw/tau) rather than as a regression
+# target. Reason, measured: mean dtw is 9.46 for same-slot pairs and 9.64 for different-slot
+# pairs, so a regression target is 98% upcoming SCHEDULE (unknowable from z) and 1.9% ball, and
+# it pushes 96.8% of same-slot pairs apart. The signal is in the TAIL -- P(dtw~0) differs 3.5x
+# between same-slot and cross-slot -- so dtw must attract and never repel. Repulsion comes from
+# uniformity instead.
+#
+# ORIGINAL HEADER of the regress arm follows.
+# PHASE 1, ALIGNMENT WITH NO LABEL AT ALL. Positive/negative structure comes from the DTW
+# distance between FUTURE EMBEDDING TRAJECTORIES, read off the cached embeddings:
+#
+#     L_align = mean over cross-episode pairs of ( ||z_i - z_j|| - align_lambda * dtw_ij )^2
+#
+# Two states whose futures coincide are pulled together whatever their past -- 79% of matched
+# pairs join DIFFERENT swap depths (gap up to 4), which is the depth-merging pressure.
+#
+# Restricted to rest anchors whose future still contains MOTION (read off the embeddings, not
+# the swap schedule). In the post-swap slack, two different non-target slots have identical
+# futures, so unrestricted pairing collapses them: measured 1-vs-2 pull 1.00x of same-slot
+# unrestricted, 0.23x restricted. Restricted, all three cross-slot pairs sit at 0.26-0.30 of
+# the same-slot pull -- the 3-way structure, with no privileged label.
+#
+# batch_size is 256, not the 128 of the other arms: only 8.2% of anchors are eligible, so 128
+# would score ~45 pairs per step. Noted as a deliberate difference.
+#   pixi run train-smt-phase1-aligndtw
+defaults:
+  - data: memtest4_big_windows
+  - data@data_anchors: memtest4_big_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_memtest4_big/${now:%Y-%m-%d_%H-%M-%S}_memtest4_big_aligndtwattract_phase1
+seed: 0
+device: cuda:1
+
+loader:
+  batch_size: 256
+  num_workers: 4
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4_big
+  mode: online
+  tags: [phase1, smt, memtest4]
+
+tensorboard: true
+
+model:
+  embed_stats_zarr: data/memtest4_big.zarr
+  arch:
+    decoder_obs: false
+    reward_head: binary       # same weak head as ALIGN-LIFT / ALIGN-TARGET
+  loss:
+    coef_unif: 1.0e-2         # BACK ON, and load-bearing: attract-only has no repulsion of its
+                              # own, so uniformity is what stops collapse. This is Wang & Isola's
+                              # decomposition in its original form, with positives supplied by
+                              # future-trajectory match instead of by augmentation.
+    coef_align: 0.2           # MEASURED. Raw encoder-grad norm 2.11, so 0.2 -> scaled 0.42,
+                              # against reward 0.50 and post 1.26. Matching ALIGN-LIFT's total
+                              # alignment pressure exactly would want 0.512, but that figure
+                              # included its sep hinge (0.918 of the 1.08) and here separation
+                              # comes from uniformity instead, so 0.2 is deliberately below it.
+                              # JUDGEMENT CALL: w=exp(-dtw/2) puts ~1% weight on a median pair,
+                              # so the term is effectively "pull matched pairs". Cross-slot pairs
+                              # still match at 0.008-0.009 vs 0.031-0.036 same-slot, i.e. 25% of
+                              # the pull is wrong-way -- which is why some repulsion is required
+                              # and coef_unif is 10x SMT's default. Watch z_std for collapse.
+    coef_sep: 0.0
+    align_label: dtw
+    align_dtw_mode: attract
+    align_tau: 2.0
+    align_dtw_path: data/dtw_memtest4_big.npz

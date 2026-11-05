@@ -1,0 +1,50 @@
+# PHASE 1 stage 1b: DMT. Fine-tunes the updaters on their own rollout states, with the teacher
+# encoder frozen (SMT's forward_dmt, submodules/smt/src/model.py:353).
+#   pixi run train-dmt-phase1 wm_run=<smt_phase1 run dir>
+defaults:
+  - data@data_rollouts: memtest4_depth1_rollouts
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+wm_run: ???
+wm_checkpoint: ${wm_run}/checkpoints/wm_latest.pt
+logdir: ${wm_run}/dmt/${now:%Y-%m-%d_%H-%M-%S}
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 24              # each item encodes roll_len+1 teacher windows, so keep it modest
+  num_workers: 4
+
+dmt:
+  lr: 1.0e-4                  # fine-tuning, so below stage 1's 3e-4
+  weight_decay: 1.0e-2
+  clip_grad_norm: 1.0
+  amp_dtype: bfloat16
+  coef_dyn: 1.0               # pull rolled states back onto the teacher's
+  coef_prior: 1.0
+  coef_slot: 1.0              # the read-out loss, on rolled states
+  detach_rnn: true            # no BPTT through the rollout: each step is a one-step correction
+  detach_readout: true        # the read-out loss must not reshape the updater
+  cache_teacher: true         # precompute the frozen teacher's states once (~10x faster steps)
+
+trainer:
+  steps: 6000
+  log_every: 250
+  eval_every: 1000
+  ckpt_every: 2000
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4_depth1
+  mode: online
+  tags: [phase1, dmt, depth1]
+
+tensorboard: true

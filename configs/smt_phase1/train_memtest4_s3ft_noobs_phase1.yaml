@@ -1,0 +1,46 @@
+# TWIN_FINETUNE C1, the "is it just more data?" control: the same unaligned baseline trained from
+# scratch, WITH labels, on S1's training episodes + the whole finetune pool (data/memtest4_s3ft.zarr,
+# 976 episodes; the last 25 are S1's own holdout). Same model, steps and batch as C0, so the only
+# variable is the extra episodes. If a finetune arm cannot beat this, the method adds nothing.
+#   pixi run train-smt-phase1-s3ft-noobs
+defaults:
+  - data: memtest4_s3ft_windows
+  - data@data_anchors: memtest4_s3ft_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_twinft/${now:%Y-%m-%d_%H-%M-%S}_s3ft_noobs_phase1
+seed: 0
+device: cuda:1
+
+loader:
+  batch_size: 128
+  num_workers: 4
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_twinft
+  mode: online
+  tags: [phase1, smt, memtest4, twinft]
+
+tensorboard: true
+
+model:
+  embed_stats_zarr: data/memtest4_s3ft.zarr   # mean/std from THIS training set
+  arch:
+    decoder_obs: false

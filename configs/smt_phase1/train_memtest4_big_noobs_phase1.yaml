@@ -1,0 +1,49 @@
+# PHASE 1, NO-OBS DECODER arm. Identical to train_memtest4_big_phase1.yaml (same 500-episode
+# memtest4_big data, same model, same 20k steps, same eval) except the reward decoder sees
+#     [z_0..z_9 ; a_t, a_t+1, ..., a_t+19]
+# and never a future frame embedding. r_t is read at z_9 and r_t+k at a_t+k-1, so every
+# read-out comes from memory + actions. With observation tokens, read-outs at show offset 3+
+# could copy the ball off the offset-1 frame; here none can, so all 9 supervised lift
+# positions put gradient on the memory instead of 2.
+#   pixi run train-smt-phase1-big-noobs
+defaults:
+  - data: memtest4_big_windows
+  - data@data_anchors: memtest4_big_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_memtest4_big/${now:%Y-%m-%d_%H-%M-%S}_memtest4_big_noobs_phase1
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 128
+  num_workers: 4
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4_big
+  mode: online
+  tags: [phase1, smt, memtest4]
+
+tensorboard: true
+
+model:
+  embed_stats_zarr: data/memtest4_big.zarr   # mean/std from THIS training set
+  arch:
+    decoder_obs: false

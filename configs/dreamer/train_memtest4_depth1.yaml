@@ -1,0 +1,19 @@
+# COMPOSITION TEST, DreamerV3 arm. Trained on data/memtest4_depth1.zarr (500 episodes, at most
+# ONE swap each), evaluated on data/memtest4_eval.zarr (0-4 swaps). The counterpart to
+# configs/smt_phase1/train_memtest4_depth1_phase1.yaml: does a fully recurrent model compose
+# swap depths it never saw?
+#   pixi run train-wm --config-name train_memtest4_depth1
+defaults:
+  - train
+  - override data: memtest4_depth1
+  - _self_
+
+logdir: logdir/world_model/${model.name}_memtest4_depth1/${now:%Y-%m-%d_%H-%M-%S}_memtest4_depth1
+
+trainer:
+  steps: 30000              # 1000 epochs: 500 episodes / batch 16 = 31 updates per epoch
+  eval_every: 1e9           # no holdout split, so no holdout eval and no wm_best.pt
+
+wandb:
+  group: ${model.name}_memtest4_depth1
+  tags: [memtest4, memtest4_depth1, data_scale]

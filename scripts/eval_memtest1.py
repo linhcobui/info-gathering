@@ -100,8 +100,9 @@ def draw_hold_chart(path, rows, f1):
             ok = r["imagined_ball"] == r["label"]
             ax.scatter(r["hold"], lane, s=size, marker="o" if ok else "X", color=GOOD if ok else BAD, zorder=3)
     trained = [r["hold"] for r in rows if r["hold"] <= 15]
-    ax.axvspan(min(trained) - 0.5, 15.5, color=GRID, alpha=0.5, zorder=0)
-    ax.text(15.4, 1.42, "holds seen in training", ha="right", color=MUTED, fontsize=10)
+    if trained:                      # an eval set may start beyond hold 15 (e.g. the 5-swap set)
+        ax.axvspan(min(trained) - 0.5, 15.5, color=GRID, alpha=0.5, zorder=0)
+        ax.text(15.4, 1.42, "holds seen in training", ha="right", color=MUTED, fontsize=10)
     ax.scatter([], [], s=90, marker="o", color=GOOD, label="correct")
     ax.scatter([], [], s=90, marker="X", color=BAD, label="wrong")
     ax.set_yticks([0, 1])

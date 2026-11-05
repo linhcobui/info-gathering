@@ -1,0 +1,50 @@
+# PHASE 1, DENSE-SLOT, NO-UNIFORMITY arm. Identical to train_memtest4_big_noobs_slotdense_phase1.yaml
+# except coef_unif = 0: the uniformity (anti-collapse) loss on the teacher's memory tokens is
+# removed from the objective. It is still computed and logged as train/loss/unif, so collapse of
+# the memory state is visible, but it contributes no gradient.
+#   pixi run train-smt-phase1-big-noobs-slotdense-nounif
+defaults:
+  - data: memtest4_big_windows
+  - data@data_anchors: memtest4_big_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_memtest4_big/${now:%Y-%m-%d_%H-%M-%S}_memtest4_big_noobs_slotdense_nounif_phase1
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 128
+  num_workers: 4
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4_big
+  mode: online
+  tags: [phase1, smt, memtest4]
+
+tensorboard: true
+
+model:
+  embed_stats_zarr: data/memtest4_big.zarr   # mean/std from THIS training set
+  arch:
+    decoder_obs: false
+    reward_head: slot
+  loss:
+    slot_supervision: dense
+    coef_unif: 0.0           # uniformity term still computed and logged, but carries no gradient

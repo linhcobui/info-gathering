@@ -1,0 +1,56 @@
+# WINDOW60-ALIGNPOS (docs/WINDOW60_ALIGNPOS.md): WINDOW60 + alignment on the positive lift bit (as ALIGN-POS).
+# WINDOW60 (docs/WINDOW60.md): teacher window 60, reward-decoder window 60, decoder input = one
+# (frame, action-taken-at-it) token per step. Identical to train_memtest4_phase1.yaml (P1-250: same
+# 250-episode data, model, steps, batch) except fut_len 20 -> 60 and the paired decoder layout.
+# The reward target is unchanged: "ball revealed" on lift offsets 1-9, masked everywhere before.
+#   pixi run train-smt-phase1-window60
+defaults:
+  - data: memtest4_windows
+  - data@data_anchors: memtest4_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_memtest4/window60_alignpos_phase1
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 128
+  num_workers: 2                # RAM: the shared machine dies above 125 GB
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4
+  mode: online
+  tags: [phase1, smt, memtest4, window60, alignpos]
+
+tensorboard: true
+
+model:
+  fut_len: 60                   # from frame 13 (last frame before swap 1) the decoder reaches the first
+                                # scored lift frame in every episode: needs 38 (train) / 46 (test)
+  arch:
+    decoder_obs: true
+    decoder_layout: paired
+  loss:                         # ALIGN-POS's block, verbatim (train_memtest4_big_alignpos_phase1.yaml)
+    coef_unif: 0.0              # blind uniformity OFF
+    coef_align: 0.1             # pull together motionless hold states where the ball IS under the lifted cup
+    coef_sep: 0.0
+    align_margin: 20.0
+    align_label: target
+    align_positive_only: true

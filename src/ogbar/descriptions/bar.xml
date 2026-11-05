@@ -1,0 +1,38 @@
+<!-- OGBar bar: 24 cm massless shell (capsule or 4 x 4 cm box, set by BarEnv from config) whose mass lives in two hidden point masses on its long (local x) axis.
+     Adapted from submodules/ogbench/ogbench/manipspace/descriptions/cube.xml (ogbench a977253, MIT).
+
+     Physics: the <inertial> below is a placeholder; BarEnv overwrites body_mass / body_ipos / body_inertia every
+     episode from ogbar.mass (W_L + W_R = 80 g). The shell geom has mass 0 so it never contributes inertia.
+
+     Debug geoms (group 5) are never drawn by the default MjvOption (groups 0-2 only), so pixel observations cannot
+     contain them; the debug renderer enables group 5 explicitly. They have mass 0 and no collision. -->
+<mujoco model="bar">
+    <default>
+        <default class="bar">
+            <geom type="box" size="0.12 0.02 0.02" rgba="0.96 0.26 0.33 1.0" mass="0" solref="0.004 1" contype="3" group="1"/>
+        </default>
+        <default class="bar_debug">
+            <geom type="sphere" size="0.01" mass="0" contype="0" conaffinity="0" group="5"/>
+        </default>
+    </default>
+
+    <worldbody>
+        <body name="object_0" pos="0.425 0 .02">
+            <freejoint name="object_joint_0"/>
+            <!-- Non-zero placeholder ipos: a body compiled with ipos = 0 is marked "simple" (sameframe) and mj_setConst then
+                 refuses the runtime centre-of-mass offset. -->
+            <inertial pos="0.001 0 0" mass="0.08" diaginertia="3.2e-6 8e-4 8e-4"/>
+            <geom name="object_0" class="bar"/>
+            <geom name="debug_mass_L" class="bar_debug" pos="-0.1 0 0" rgba="0.2 0.45 1.0 1"/>
+            <geom name="debug_mass_R" class="bar_debug" pos="0.1 0 0" rgba="1.0 0.55 0.0 1"/>
+            <!-- Centre of mass: a bright green band around the bar (cylinder whose axis is the bar's long axis). -->
+            <geom name="debug_com" class="bar_debug" type="cylinder" size="0.027 0.006" quat="0.7071 0 0.7071 0" pos="0 0 0" rgba="0.1 1.0 0.2 1"/>
+            <!-- Current grasp point s: a thin, dark-red ring just proud of the bar surface. -->
+            <geom name="debug_grasp" class="bar_debug" type="cylinder" size="0.022 0.0015" quat="0.7071 0 0.7071 0" pos="0 0 0" rgba="0.6 0.05 0.05 0.8"/>
+            <site name="com_0" type="sphere" size=".005" rgba="0 1 0 1" group="5"/>
+        </body>
+        <body name="object_target_0" pos="0.45 0 .02" mocap="true">
+            <geom name="target_object_0" class="bar" rgba=".5 .5 .5 .2" contype="0" conaffinity="0"/>
+        </body>
+    </worldbody>
+</mujoco>

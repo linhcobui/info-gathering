@@ -1,0 +1,54 @@
+# PHASE 1, ALIGNMENT + DENSE SLOT SIGNAL. Uniformity is removed and replaced by Wang & Isola's
+# alignment term (arXiv:2005.10242) applied with the slot label: states at MOTIONLESS HOLD frames
+# that share the ball slot are pulled together, and the three slot means are held apart by a
+# hinge. Those frames render an identical scene in every episode, so the slot is the only
+# legitimate difference between them. Decoder head keeps the dense 3-way slot supervision.
+#   pixi run train-smt-phase1-aligndense
+defaults:
+  - data: memtest4_big_windows
+  - data@data_anchors: memtest4_big_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_memtest4_big/${now:%Y-%m-%d_%H-%M-%S}_memtest4_big_aligndense_phase1
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 128
+  num_workers: 4
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4_big
+  mode: online
+  tags: [phase1, smt, memtest4]
+
+tensorboard: true
+
+model:
+  embed_stats_zarr: data/memtest4_big.zarr   # mean/std from THIS training set
+  arch:
+    decoder_obs: false
+    reward_head: slot
+  loss:
+    slot_supervision: dense
+    coef_unif: 0.0            # blind uniformity OFF: it pushes apart states alignment merges
+    coef_align: 0.1           # pull same-slot states together at motionless hold frames
+    coef_sep: 1.0e-3          # hinge keeping the three slot means apart
+    align_margin: 20.0

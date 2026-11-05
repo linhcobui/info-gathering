@@ -1,0 +1,47 @@
+# PHASE 1 stage 2a: fit StateReadout (memory -> embedding) on FROZEN stage-1 states.
+# Writes a new world-model checkpoint carrying the stage-1 config verbatim, so
+# train_decoder.py and eval_memtest1.py rebuild the identical model from it.
+#   pixi run train-readout-phase1 wm_run=<smt_phase1 run dir>
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+wm_run: ???
+wm_checkpoint: ${wm_run}/checkpoints/wm_latest.pt
+logdir: ${wm_run}/readout/${now:%Y-%m-%d_%H-%M-%S}
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 8               # whole episodes (window: null), so a batch is ~8 x 68 steps
+  num_workers: 4
+
+readout:
+  lr: 3.0e-4
+  weight_decay: 0.0
+  clip_grad_norm: 1.0
+  amp_dtype: bfloat16
+  # Which frozen states the readout is fitted on. `recurrent` is the eval distribution --
+  # one teacher window then the posterior chained over every real step. `window` fits it on
+  # teacher encodings instead, which is the ceiling gate 5 asks for
+  # (readout(z_teacher) -> pixels). It never changes the saved model config, only the states
+  # this stage regresses from.
+  states: recurrent           # recurrent | window
+
+trainer:
+  steps: 8000
+  log_every: 250
+  eval_every: 1000
+  ckpt_every: 2000
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4
+  mode: online
+  tags: [phase1, readout, memtest4]
+
+tensorboard: true

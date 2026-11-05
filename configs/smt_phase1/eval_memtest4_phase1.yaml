@@ -1,0 +1,44 @@
+# PHASE 1 stage 3. memtest4 eval: watch through the hold with the POSTERIOR (from a one-step
+# teacher warm-up), then imagine the lift with the PRIOR. F1 comes from the yellow-pixel
+# detector on decoded frames only; the reward decoder is not loaded into this path at all.
+#
+# Self-contained (no defaults list): loaded from a second config dir alongside configs/dreamer,
+# where an inherited default would be ambiguous.
+#
+# Reference on data/memtest4_eval.zarr (315 episodes, positive rate 0.359): "always empty" is
+# F1 0.000 at accuracy 0.641, "always ball" is F1 0.528 at accuracy 0.359. F1 alone is unsafe
+# here -- a near-constant predictor once scored 0.544 while its accuracy fell to 0.410 -- so
+# read balanced_accuracy and mcc in metrics.json, and the by-swap split from
+# scripts/slack_split_prelim.py.
+#
+# NOT comparable like-for-like to the R2-Dreamer 0.714: the reward head trains on the quantity
+# this eval measures. Report it as its own aux-supervised condition.
+#   pixi run eval-smt-phase1 decoder_run=<pixel_decoder_phase1 run>
+hydra:
+  run:
+    dir: ${outdir}
+  job:
+    chdir: false
+
+decoder_run: ???
+decoder_checkpoint: ${decoder_run}/checkpoints/decoder_latest.pt
+zarr_path: data/memtest4_eval.zarr
+outdir: ${decoder_run}/eval_memtest4_phase1/${now:%Y-%m-%d_%H-%M-%S}
+device: cuda:0
+seed: 0
+
+horizon: 9                          # imagined steps after an action onset (the lift is 10 incl. the onset)
+label_key: ball_under_target
+meta_keys: [ball_under_target, ball_slot, phase]
+
+detector:
+  threshold: 0.15
+  min_pixels: 3
+
+sheet_max_rows: 60
+
+videos:
+  holds: [10, 22, 34]
+  fps: 4
+
+hold_offset: 20                     # memtest4 has no closed phase: reveal 10 + show 10 outside the hold

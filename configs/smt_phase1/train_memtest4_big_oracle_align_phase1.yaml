@@ -1,0 +1,64 @@
+# ORACLE-OBSERVATION CONTROL (align). Identical to the pixel arms except that observations are
+# the 13-D symbolic vector embed_oracle_state instead of frozen R2-Dreamer embeddings. That
+# vector carries exactly the pixels' information: phase, cup height, WHICH PAIR is swapping and
+# how far along, and the ball only where the scene shows it (reveal, and the lift if it is under
+# the risen cup). Verified sufficient -- a hand-written tracker scores 878/878 -- and verified
+# non-leaking: the slot never appears during the hold.
+#
+# The question this answers: with perfect, noiseless observations, does the teacher still drift
+# on static frames and still fail at depth? If yes, the problem is the architecture (attention +
+# rotary position + the SMT objective), not the perception.
+#   pixi run train-smt-phase1-oracle-align
+defaults:
+  - data: memtest4_big_windows
+  - data@data_anchors: memtest4_big_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_memtest4_big/${now:%Y-%m-%d_%H-%M-%S}_memtest4_big_oracle_align_phase1
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 128
+  num_workers: 4
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4_big
+  mode: online
+  tags: [phase1, smt, memtest4, oracle]
+
+tensorboard: true
+
+data:
+  meta_keys: [ball_under_target, ball_slot, phase, embed_oracle_state]
+
+model:
+  oracle_obs: true
+  embed_key: embed_oracle_state
+  embed_stats_zarr: data/memtest4_big.zarr
+  arch:
+    decoder_obs: false
+    reward_head: binary
+  loss:
+    coef_unif: 0.0
+    coef_align: 0.1
+    coef_sep: 1.0e-3
+    align_margin: 20.0
+    align_label: slot

@@ -1,0 +1,132 @@
+# PHASE 1: a plain-vector belief, two one-step updaters, a reward-only decoder.
+# Every knob the Python signature accepts appears here: a Hydra override on a key absent from
+# the struct fails at startup, and that has already killed two launched runs.
+_target_: world_model.models.smt_phase1.SmtPhase1WM
+name: smt_phase1
+image_size: 64
+window: null                  # the standard data configs interpolate ${model.window}
+
+# the frozen encoder: the trained memtest4 stage-1 checkpoint (configs/smt_prelim/cache_embeddings.yaml)
+encoder_checkpoint: logdir/world_model/r2dreamer_memtest4/2026-09-14_18-57-20_memtest4/checkpoints/wm_latest.pt
+expect_step: 15000
+embed_key: embed_r2d_memtest4_wm15000
+oracle_obs: false             # true = observations come from embed_oracle_state (a 13-D symbolic
+                              # vector with the pixels' exact information content, built by
+                              # scripts/build_oracle_state.py) instead of the frozen pixel
+                              # encoder. The control for "is the drift perceptual or structural".
+embed_stats_zarr: data/memtest4.zarr    # mean/std come from the TRAIN split's .zattrs
+
+ctx_len: 60                   # the teacher's window; it only ever makes one-step TARGETS now
+fut_len: 20                   # 21 reward read-outs r_t..r_t+20; 68.4% of anchors see a lift
+                              # frame, against 44.1% at fut_len 10
+
+# THE knob of this experiment. 1 = the teacher encodes the window at t=0 and nothing else; the
+# posterior carries the state across every remaining real step, ~40 of them, then the prior
+# imagines the lift. eval_warmup: 60 reduces to smt_prelim, where the onset state was always a
+# full-prefix teacher encoding and the updater was never actually tested.
+eval_warmup: 1
+observe_mode: recurrent       # recurrent = warm up once, then chain the posterior.
+                              # window    = re-encode a fresh teacher window at every step and
+                              #             never use an updater. The ceiling / the ablation.
+
+native:                       # must match the config the encoder weights were trained under
+  size: size12M
+  overrides:
+    rep_loss: r2dreamer
+    compile: false
+
+arch:
+  d_model: 256
+  n_registers: 10             # memory = 10 x 256 = 2560 floats, rms-normed per token
+  encoder_depth: 8
+  posterior_depth: 8          # z_r2 was 0.9999 for the equivalent module in smt_prelim, so 8.4M
+  prior_depth: 8              # params per updater is near-certainly oversized. Shrink here first
+                              # if compute matters; kept at 8 so the comparison stays clean.
+  decoder_depth: 4            # the reward decoder, training only
+  decoder_obs: true           # false = the reward decoder sees [memory ; future actions] only,
+                              # never a future frame; every read-out must come from memory
+  decoder_layout: interleaved  # reward-decoder input (decoder_obs: true). interleaved = [z | a_t, x_t, a_t+1,
+                              # x_t+1, ...], r_t+k at a-tokens, newest frame x_t+k-2 (every run before
+                              # WINDOW60). paired = [z | (x_t,a_t), (x_t+1,a_t+1), ...], one MLP token per
+                              # step, r_t+k at pos K-1+k, newest frame x_t+k-1 (docs/WINDOW60.md).
+  reward_head: binary          # binary = ball under the lifted cup (0/1); slot = which of
+                              # slots 0/1/2 (3-way CE); embed = predict the frame EMBEDDING itself
+                              # (SMT's predictive-state objective; no ball label in the head)
+                              # slots 0/1/2 holds the ball (3-way CE, same lift mask)
+  readout_depth: 4            # StateReadout, stage 2 only
+  # DELTA (docs/DELTA.md): event-gated sparse updates. z_{t+1} = (1-m) * z_t + m * z_hat, where
+  # m = sigmoid(MaskNet(e_{t+1}, a_t)) for the posterior and m_p(a_t) for the prior. The gate
+  # sees the event only, never z / time / history. off = no MaskNet, bit-identical baseline.
+  delta_mask: "off"           # off | token (10 gates, one per memory token) | dim (2560 gates)
+  delta_mask_init: 3.0        # output bias: every gate starts open at sigmoid(3) = 0.95
+  delta_mask_hidden: 256      # MaskNet MLP width
+  n_heads: 8
+  rotary_pos_emb: true
+  use_rmsnorm: true
+
+loss:
+  coef_reward: 1.0
+  coef_post: 1.0
+  coef_prior: 1.0
+  coef_unif: 1.0e-3           # SMT's default, over the memory tokens
+  unif_sample: 512
+  # Wang & Isola alignment (arXiv:2005.10242), the other half of the decomposition uniformity
+  # comes from. Positives are states at MOTIONLESS HOLD frames sharing the ball slot -- frames
+  # whose rendered scene is identical across episodes, so the slot is the only legitimate
+  # difference. coef_sep is a hinge keeping the three slot means at least align_margin apart;
+  # it replaces blind uniformity, which pushes apart the very states alignment merges.
+  coef_align: 0.0             # 0 = off.
+  coef_sep: 0.0
+  align_margin: 20.0
+  align_label: slot           # WHAT defines a positive pair, at motionless hold frames only:
+                              #   slot   = which of the 3 cups hides the ball (privileged,
+                              #            log2(3) bits per rest frame, hands over the whole
+                              #            partition the task is about)
+                              #   target = is the ball under the cup that will be LIFTED. One
+                              #            bit -- the task's own output -- so it does NOT say
+                              #            which of the other two holds it. Positives join rest
+                              #            states at ANY swap depth. Needs no dense slot labels.
+                              #   dtw    = NO label at all. Metric regression onto the DTW
+                              #            distance between future embedding trajectories:
+                              #            (||z_i - z_j|| - align_lambda * dtw_ij)^2, over rest
+                              #            anchors whose future still contains motion. Replaces
+                              #            coef_sep/align_margin, which are unused in this mode.
+  align_dtw_path: data/dtw_memtest4_big.npz   # built by scripts/build_dtw_matrix.py
+  align_label_path: null      # align_label: file -> (episode, t, label) table, e.g. scripts/build_self_slot0_labels.py
+  align_class_weights: null   # align_label file or slot -> per-class pull weights [w0, w1, ...] (file: class ids, -1 = no class)
+  align_near: 1.0             # dtwpair mode: dtw below this = positive pair (the 1.64% tail)
+  align_far: 5.0              # dtwpair mode: dtw above this = negative, hinged at align_margin
+  align_dtw_mode: attract     # dtw mode. attract = soft-weighted alignment, w=exp(-dtw/tau),
+                              # pull only (dtw~0 implies equivalent; a large dtw implies NOTHING,
+                              # so repulsion must come from coef_unif). regress = metric
+                              # regression onto lambda*dtw -- measured to fail, kept for the record.
+  align_positive_only: false  # target mode: align ONLY the class where the ball is under the cup
+                              # that lifts. Its negative class conflates slot 1 with slot 2, which
+                              # is not closed under the swaps; positives are a true equivalence.
+  align_positive_sep: false   # with align_positive_only, still take the NEGATIVE class's mean so
+                              # the sep hinge has a pair. It pushes the negatives away from the
+                              # positives as a rigid group, so it cannot merge slot 1 with slot 2.
+  align_tau: 2.0              # attract mode: weight decay scale. DTW p1 0.01, p5 3.52, p50 9.58.
+  align_lambda: 2.0           # regress mode only. Median DTW over eligible pairs is 9.58, so lambda 2.0
+                              # puts the median target distance at 19.2 -- the same scale the
+                              # slot/target arms settle at (between-class ~20).
+  slot_supervision: lift      # slot head only. lift = the 9 lift frames; dense = every real
+                              # step, label switching at each swap's halfway frame (privileged)
+  # The gradient contract (docs/SMT_PHASE1.md 3, asserted by scripts/verify_smt_phase1.py):
+  # the prior must chase the encoder and never the reverse, so BOTH ends of its loss are cut.
+  # Live target -> the encoder is pushed to make states predictable without the observation,
+  # i.e. to discard what we need. Live input -> z_t is pushed to pre-encode a frame it has not
+  # seen. Set either to false to restore the looser reading.
+  detach_prior_target: true
+  detach_prior_input: true
+  # DELTA: lambda_t * (mean(m) + mean(m_p)); lambda ramps linearly 0 -> coef_delta over
+  # delta_warmup_steps so the degenerate shut-forever mask cannot win before tracking is learned
+  coef_delta: 0.0
+  delta_warmup_steps: 5000
+
+optim:
+  lr: 3.0e-4
+  betas: [0.9, 0.95]
+  weight_decay: 1.0e-2
+  clip_grad_norm: 1.0
+  amp_dtype: bfloat16

@@ -1,0 +1,95 @@
+# OGBar-SMT PRIVILEGED-ALIGN (user 2026-10-30): deterministic Q(z_t, a_t, x_t+1) and P(z_t, a_t), no x_t;
+# z*_t pulled together across anchors by CoM similarity (c_view, privileged) + per-token uniformity.
+# A privileged reference model for the information-gathering work, not a label-free method.
+#   pixi run python scripts/verify_smt_ogbar.py            # contract, causality, memory/speed first
+#   pixi run python scripts/train_smt_ogbar.py
+#   pixi run python scripts/train_smt_ogbar.py model.z_dist=deterministic model.tag=det   # phase-1 control
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_ogbar/${now:%Y-%m-%d_%H-%M-%S}_${tag}
+tag: privalign
+seed: 0
+device: cuda:0
+
+data:
+  zarr_path: data/ogbar_v3_400.zarr
+  cache_dir: data/ogbar_v3_400_dinov2
+  frameskip: 5                    # model step = 5 raw steps; a_t = the 5 raw actions concatenated (25)
+  episodes: null                  # null = all; or a list / comma string of episode indices (e.g. an overfitting subset)
+  privileged: true                # loader adds c_view (cm) per anchor; read ONLY by the align loss
+
+model:                            # every knob from docs/OGBAR_SMT.md "Flags" plus the architecture
+  n_patches: 256
+  patch_dim: 384
+  d_model: 256
+  n_registers: 10
+  n_heads: 8
+  encoder_depth: 8
+  decoder_depth: 4
+  posterior_depth: 8
+  prior_depth: 8
+  rotary_pos_emb: true
+  use_rmsnorm: true
+  window: 200                     # teacher window (steps ending at t)
+  future: 200                     # decoder: future steps after t
+  pool_heads: 8                   # frame token: attention-pool heads over the 256 patches
+  head_mem_tokens: 8              # decoder output head: state tokens the 256 patch queries attend to
+  head_mlp_mult: 2
+  updater_obs_input: none         # user 2026-10-30: Q reads z_t, a_t, x_t+1; P reads z_t, a_t (no x_t in either)
+  z_dist: deterministic           # user 2026-10-30: Q and P deterministic (post = MSE of mu_Q, prior = MSE of mu_P)
+  prior_loss: nll                 # Gaussian NLL only; no KL divergence in any loss (user, 2026-10-18)
+  prior_mixture: 1
+  sigma_min: 0.01
+  sigma_max: 1.0
+  sigma_init: 0.1
+  beta_nll: 0.0
+  input_noise: 0.0
+  decoder_loss: plain             # plain / delta (change from the previous frame)
+  decoder_steps_scored: 32
+  checkpoint_activations: true    # recompute teacher / Q / P / head layers in backward (batch 128 fits in 24 GB)
+  head_chunk: 32                  # anchors per patch-head call (bounds its recompute peak)
+  coef_decoder: 1.0
+  coef_post: 0.1                  # user 2026-10-15 (run 1 had 1.0 and no uniformity: z* collapsed to one vector)
+  coef_prior: 1.0                 # reaches P only
+  coef_unif: 0.1                  # user 2026-10-15: raised from 1e-3 (run 3 collapsed by step 200 at 1e-3, per-token)
+  unif_mode: per_token            # user 2026-10-15: each memory token spread across the batch's anchors. pooled = phase 1's
+                                  # form over all K*B vectors; run 2 satisfied it with 10 distinct tokens and ~the same z* everywhere
+  unif_sample: 512                # (pooled mode only) token vectors sampled
+  normalize_actions: true         # per-dimension training mean / std, stored in the checkpoint
+  coef_align: 1.0                 # privileged CoM pull (model.py com_align). 0.1 (= coef_unif, 1:1) never organised z by c in
+                                  # 500 steps (far/near 1.03, run 2026-10-30_17-03-23); phase 1 ran align:unif 100:1, here 10:1
+  coef_align_push: 1.0            # uniformity on pairs weighted by 1 - w (model.py com_align); pull 1.0 without it collapsed z (run *_privalign_a1)
+  align_push_t: 2.0
+  align_alpha: 2.0                # cm: pair weight exp(-dc^2 / 2 alpha^2) -> 1 cm 0.88, 1.5 cm 0.75, 4 cm 0.14, 6 cm 0.01
+
+optim:                            # SMT phase 1
+  lr: 3.0e-4
+  betas: [0.9, 0.95]
+  weight_decay: 0.01
+  clip_grad_norm: 1.0
+  warmup_steps: 1000
+
+loader:
+  batch_size: 128
+  num_workers: 6                  # each worker builds one ~5 GB batch in shared memory (~30 GB in all); 10 ran out of /dev/shm
+  prefetch_factor: 1
+
+trainer:
+  steps: 20000                  # ~2 s/step (data-bound) -> ~11 h; 2.6M anchors, ~6.5 passes
+  log_every: 50
+  ckpt_every: 1000
+  keep_every: 10000
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_ogbar
+  mode: online
+  tags: [smt_ogbar, ogbar, dino]
+
+tensorboard: true

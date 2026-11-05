@@ -1,0 +1,53 @@
+# PHASE 1, ALIGNMENT + RECONSTRUCTION ONLY. The decoder head predicts the frame EMBEDDING from
+# the memory and the coming actions (SMT's predictive-state objective) -- there is no ball label
+# in the head at all, at the lift or anywhere else. Alignment (which does use the slot label to
+# say which states must be identical) is the only place task structure enters. Restores a
+# reconstruction term to stage 1, which every previous arm lacked.
+#   pixi run train-smt-phase1-alignembed
+defaults:
+  - data: memtest4_big_windows
+  - data@data_anchors: memtest4_big_anchors
+  - model: smt_phase1
+  - _self_
+
+hydra:
+  run:
+    dir: ${logdir}
+  job:
+    chdir: false
+
+logdir: logdir/world_model/smt_phase1_memtest4_big/${now:%Y-%m-%d_%H-%M-%S}_memtest4_big_alignembed_phase1
+seed: 0
+device: cuda:0
+
+loader:
+  batch_size: 128
+  num_workers: 4
+
+trainer:
+  steps: 20000
+  log_every: 250
+  eval_every: 1000
+  best_metric: opt/loss
+  ckpt_every: 2500
+  resume: null
+
+wandb:
+  project: info-gathering-wm
+  entity: null
+  group: smt_phase1_memtest4_big
+  mode: online
+  tags: [phase1, smt, memtest4]
+
+tensorboard: true
+
+model:
+  embed_stats_zarr: data/memtest4_big.zarr   # mean/std from THIS training set
+  arch:
+    decoder_obs: false
+    reward_head: embed
+  loss:
+    coef_unif: 0.0            # blind uniformity OFF: it pushes apart states alignment merges
+    coef_align: 0.1           # pull same-slot states together at motionless hold frames
+    coef_sep: 1.0e-3          # hinge keeping the three slot means apart
+    align_margin: 20.0
