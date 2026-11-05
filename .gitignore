@@ -10,8 +10,5 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 outputs/
-# figures: images are tracked; raw arrays and videos stay local (regenerable, large)
-figures/**/*.npz
-figures/**/*.npy
-figures/**/*.mp4
-figures/**/*.log
+# figures stay local (regenerated from code)
+figures/
