@@ -2,6 +2,12 @@
 
 Design notes, plans and results, newest project last. Each doc gives its own status and date at the top.
 
+## Start here
+
+| Doc | What |
+|---|---|
+| [NEW_MACHINE.md](NEW_MACHINE.md) | Setup checklist for the new GPU machine (handoff, 2026-11-04) |
+
 ## Conventions
 
 | Doc | What |
